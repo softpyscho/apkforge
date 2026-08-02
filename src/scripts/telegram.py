@@ -18,6 +18,7 @@ from pathlib import Path
 
 from curl_cffi import requests as curl_requests
 
+from src.core.config import CONFIG_PATH, load_toml, parse_config
 from src.core.logger import IS_GITHUB, abort, epr, pr
 
 _BACKTICK_RE = re.compile(r"`([^`]+)`")
@@ -56,12 +57,16 @@ def _build_message(brand: str, green_lines: list[str], microg_line: str, changel
         parts.extend(changelog_lines)
     return "\n".join(parts)
 
-def notify(brand: str, final_md_path: str = "final.md") -> None:
+def notify(brand: str = "", final_md_path: str = "final.md") -> None:
     token = os.getenv("TG_TOKEN")
     chat = os.getenv("TG_CHAT")
     if not token or not chat:
         epr("TG_TOKEN or TG_CHAT not set, skipping notification")
         return
+        
+    if not brand:
+        config = parse_config(load_toml(CONFIG_PATH))
+        brand = config.brand
 
     path = Path(final_md_path)
     if not path.exists() or not path.stat().st_size:
@@ -87,12 +92,14 @@ def notify(brand: str, final_md_path: str = "final.md") -> None:
 def main() -> None:
     _require_ci("telegram.py")
     match sys.argv[1:]:
+        case ["notify"]:
+            notify()
         case ["notify", brand]:
             notify(brand)
         case ["notify", brand, final_md]:
             notify(brand, final_md)
         case _:
-            abort("Usage: telegram.py notify <brand> [final_md_path]")
+            abort("Usage: telegram.py notify [brand] [final_md_path]")
 
 if __name__ == "__main__":
     main()

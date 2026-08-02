@@ -6,13 +6,12 @@ brand = "morphe"
 pkg-name = "com.reddit.frontpage"
 badge-color = "FF4500"
 badge-icon = "reddit"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/redditinc/reddit"
 uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/reddit/com.reddit.frontpage"
 patcher-args = "-e 'Custom branding name for Reddit' -OappName='Reddit'"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Reddit.patches]
 "github:MorpheApp/morphe-patches" = []
@@ -21,12 +20,11 @@ version = "auto"
 pkg-name = "com.twitter.android"
 badge-color = "000000"
 badge-icon = "x"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/x-corp/twitter"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/x/com.twitter.android"
-release-group = "piko"
-arch = "arm64-v8a"
-version = "auto"
 
 [Twitter.patches]
 "github:crimera/piko" = []
@@ -35,28 +33,25 @@ version = "auto"
 pkg-name = "com.instagram.android"
 badge-color = "FF0069"
 badge-icon = "instagram"
+version = "latest"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/instagram/instagram-instagram"
 uptodown-dlurl = "https://instagram.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/instagram/com.instagram.android"
 github-dlurl = "https://github.com/softpsycho/apkforge/releases/tag/com.instagram.android"
-release-group = "piko"
-arch = "arm64-v8a"
-version = "latest"
 
-[Instagram.patches]
-# Switch to the Full Form to pull the dev patches, and exclude the broken patch
-"github:crimera/piko" = { version = "dev" }
+[Instagram.patches."github:crimera/piko"]
+version = "dev"
 
 [WARP]
 pkg-name = "com.cloudflare.onedotonedotonedotone"
 badge-color = "F48120"
 badge-icon = "cloudflare"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/cloudflare/1-1-1-1-faster-safer-internet"
 uptodown-dlurl = "https://1-1-1-1.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/1-1-1-1-warp/com.cloudflare.onedotonedotonedotone"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [WARP.patches]
 "github:rushiranpise/morphe-patches" = []
@@ -65,26 +60,26 @@ version = "auto"
 pkg-name = "com.budget.tracker_app"
 badge-color = "4CAF50"
 badge-icon = "cashapp"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/dapper-app-developer/cashew-expense-budget-tracker"
 uptodown-dlurl = "https://cashew.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/cashew/com.budget.tracker.finance"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Cashew.patches]
-"github:rushiranpise/morphe-patches" = ["Unlock Pro"]
+"github:rushiranpise/morphe-patches" = [
+    "Unlock Pro",
+]
 
 [Splitwise]
 pkg-name = "com.Splitwise.SplitwiseMobile"
 badge-color = "40B89C"
 badge-icon = "splitwise"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/splitwise/splitwise/"
 uptodown-dlurl = "https://splitwise.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/splitwise/com.Splitwise.SplitwiseMobile"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Splitwise.patches]
 "github:rushiranpise/morphe-patches" = []
@@ -93,12 +88,11 @@ version = "auto"
 pkg-name = "com.truecaller"
 badge-color = "0080FF"
 badge-icon = "truecaller"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/true-software-scandinavia-ab/truecaller-caller-id-block/"
 uptodown-dlurl = "https://truecaller.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/truecaller/com.truecaller"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Truecaller.patches]
 "gitlab:Paresh-Maheshwari/paresh-patches" = []
@@ -107,27 +101,24 @@ version = "auto"
 pkg-name = "com.xodo.pdf.reader"
 badge-color = "0078D4"
 badge-icon = "adobeacrobatreader"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/apryse-software-inc/xodo-pdf-reader-editor"
 uptodown-dlurl = "https://xodo-docs.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/xodo-pdf-reader/com.xodo.pdf.reader"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Xodo.patches]
 "github:hoo-dles/morphe-patches" = []
-
 
 [Amazon-Prime-Video]
 pkg-name = "com.amazon.avod.thirdpartyclient"
 badge-color = "00A8E1"
 badge-icon = "amazonprimevideo"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/amazon-mobile-llc/amazon-prime-video/"
 uptodown-dlurl = "https://amazon-video.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/amazon-prime-video/com.amazon.avod.thirdpartyclient"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Amazon-Prime-Video.patches]
 "github:hoo-dles/morphe-patches" = []
@@ -136,12 +127,11 @@ version = "auto"
 pkg-name = "com.ticktick.task"
 badge-color = "4772FA"
 badge-icon = "ticktick"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/ticktick-limited/ticktick-to-do-list-with-reminder-day-planner/"
 uptodown-dlurl = "https://ticktick.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/ticktick/com.ticktick.task"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [TickTick.patches]
 "gitlab:Paresh-Maheshwari/paresh-patches" = []
@@ -150,13 +140,12 @@ version = "auto"
 pkg-name = "com.oasisfeng.greenify"
 badge-color = "43A047"
 badge-icon = "android"
+version = "auto"
+arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/oasisfeng/greenify"
 uptodown-dlurl = "https://greenify.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/greenify/com.oasisfeng.greenify"
 github-dlurl = "https://github.com/softpsycho/apkforge/releases/tag/com.oasisfeng.greenify"
-release-group = "morphe"
-arch = "arm64-v8a"
-version = "auto"
 
 [Greenify.patches]
 "github:rushiranpise/morphe-patches" = []

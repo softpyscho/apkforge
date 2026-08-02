@@ -45,7 +45,6 @@ class AppEntry:
     badge_icon: str
     app_name: str
     brand: str
-    release_group: str
     arch: str
     dpi: str
     version: str
@@ -124,7 +123,6 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             badge_icon=str(t.get("badge-icon", "")),
             app_name=str(t.get("app-name", table_name.replace("-", " "))),
             brand=brand,
-            release_group=str(t.get("release-group", brand)).lower(),
             arch=arch,
             dpi=str(t.get("dpi", "")),
             version=str(t.get("version", "auto")),

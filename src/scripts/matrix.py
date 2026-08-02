@@ -43,26 +43,20 @@ def _fetch_latest_release(source: str, net: NetworkManager, version: str = "late
         upstream_date = upstream_rel.get("published_at", "") or ""
     return changelog_text, upstream_date
 
-def _fetch_our_releases(repo: str, net: NetworkManager) -> dict[str, str]:
-    our_releases_by_group: dict[str, str] = {}
+def _fetch_our_releases(repo: str, net: NetworkManager) -> str:
+    # Just return the latest release date of our repo
     try:
-        our_releases_raw = net.get(f"https://api.github.com/repos/{repo}/releases?per_page=100", headers=net._gh_headers)
-        for rel in json.loads(our_releases_raw):
-            tag = rel.get("tag_name", "")
-            group = tag.split("-", 1)[1] if "-" in tag else ""
-            if group and group not in our_releases_by_group:
-                our_releases_by_group[group] = rel.get("published_at", "") or ""
+        rel = json.loads(net.get(f"https://api.github.com/repos/{repo}/releases/latest", headers=net._gh_headers))
+        return rel.get("published_at", "") or ""
     except Exception as exc:
         epr(f"Failed to fetch our releases: {exc}")
-        our_releases_by_group = {}
-    return our_releases_by_group
+        return ""
 
 def _load_entries() -> list:
     data = load_toml(CONFIG_PATH)
     return parse_app_entries(data, parse_config(data))
 
-def get_matrix(source: str) -> None:
-    source_lower = source.lower()
+def get_matrix() -> None:
     filter_changelog = os.getenv("FILTER_CHANGELOG", "false").lower() == "true"
     patches_sources: list[str] = []
     has_changelog_keywords = False
@@ -70,8 +64,6 @@ def get_matrix(source: str) -> None:
     staged: list = []
     for entry in _load_entries():
         if not entry.enabled:
-            continue
-        if source_lower != "all" and entry.release_group != source_lower:
             continue
         for src in entry.patches:
             if src not in patches_sources:
@@ -87,8 +79,8 @@ def get_matrix(source: str) -> None:
         with NetworkManager() as net:
             repo = os.getenv("GITHUB_REPOSITORY")
             if repo:
-                our_releases_by_group = _fetch_our_releases(repo, net)
-                if our_releases_by_group.get(source_lower, ""):
+                our_date = _fetch_our_releases(repo, net)
+                if our_date:
                     for ps in patches_sources:
                         try:
                             text, _ = _fetch_latest_release(ps, net)
@@ -107,80 +99,72 @@ def get_matrix(source: str) -> None:
             include.append({"id": entry.table})
 
     if not include:
-        abort(f"No apps found for release group '{source}'")
+        abort("No apps found to build")
     print(json.dumps({"include": include, "prerelease": is_prerelease}, ensure_ascii=False))
 
 def check_builds_needed(force_all: bool = False) -> None:
-    seen: dict[str, list[str]] = {}
-    dev_groups: set[str] = set()
+    seen_patches: list[str] = []
+    has_dev = False
     entries = _load_entries()
     for entry in entries:
         if not entry.enabled:
             continue
-        group = entry.release_group
-        if group not in seen:
-            seen[group] = []
         for src in entry.patches:
-            if src not in seen[group]:
-                seen[group].append(src)
+            if src not in seen_patches:
+                seen_patches.append(src)
         if any(spec["version"] == "dev" for spec in entry.patches.values()):
-            dev_groups.add(group)
+            has_dev = True
 
-    if not seen:
+    if not seen_patches:
         print(json.dumps([]))
         return
 
     if force_all:
-        print(json.dumps(list(seen.keys())))
+        print(json.dumps(["all"]))
         return
 
     repo = os.getenv("GITHUB_REPOSITORY")
     if not repo:
         abort("GITHUB_REPOSITORY environment variable is not set")
 
-    entries_by_group: dict[str, list] = {}
-    for entry in entries:
-        if entry.enabled:
-            entries_by_group.setdefault(entry.release_group, []).append(entry)
-
     with NetworkManager() as net:
-        our_releases_by_group = _fetch_our_releases(repo, net)
+        our_date = _fetch_our_releases(repo, net)
 
-        groups_to_build: list[str] = []
-        for group, patches_sources in seen.items():
-            our_date = our_releases_by_group.get(group, "")
+        if not our_date:
+            print(json.dumps(["all"]))
+            return
 
-            if not our_date:
-                groups_to_build.append(group)
+        needs_build = False
+        combined_changelog = ""
+        for patches_source in seen_patches:
+            try:
+                changelog_text, upstream_date = _fetch_latest_release(patches_source, net, version="dev" if has_dev else "latest")
+                combined_changelog += changelog_text + "\n"
+            except ResourceNotFoundError:
+                epr(f"No upstream release found for '{patches_source}', skipping")
                 continue
+            except Exception as exc:
+                epr(f"Failed to fetch upstream release for '{patches_source}': {exc}")
+                needs_build = True
+                break
 
-            needs_build = False
-            combined_changelog = ""
-            for patches_source in patches_sources:
-                try:
-                    changelog_text, upstream_date = _fetch_latest_release(patches_source, net, version="dev" if group in dev_groups else "latest")
-                    combined_changelog += changelog_text + "\n"
-                except ResourceNotFoundError:
-                    epr(f"No upstream release found for '{patches_source}', skipping")
+            if upstream_date and datetime.fromisoformat(upstream_date) > datetime.fromisoformat(our_date):
+                needs_build = True
+
+        if needs_build:
+            changelog_lower = combined_changelog.lower()
+            has_apps = False
+            for app in entries:
+                if not app.enabled:
                     continue
-                except Exception as exc:
-                    epr(f"Failed to fetch upstream release for '{patches_source}': {exc}")
-                    needs_build = True
+                if not app.changelog_keywords or any(kw in changelog_lower for kw in app.changelog_keywords):
+                    has_apps = True
                     break
+            if has_apps:
+                print(json.dumps(["all"]))
+                return
 
-                if upstream_date and datetime.fromisoformat(upstream_date) > datetime.fromisoformat(our_date):
-                    needs_build = True
-
-            if needs_build:
-                changelog_lower = combined_changelog.lower()
-                has_apps = False
-                for app in entries_by_group.get(group, []):
-                    if not app.changelog_keywords or any(kw in changelog_lower for kw in app.changelog_keywords):
-                        has_apps = True
-                        break
-                if has_apps:
-                    groups_to_build.append(group)
-    print(json.dumps(groups_to_build))
+    print(json.dumps([]))
 
 def main() -> None:
     _require_ci("matrix.py")
@@ -189,10 +173,10 @@ def main() -> None:
             check_builds_needed()
         case ["get-matrix-force"]:
             check_builds_needed(force_all=True)
-        case ["get-matrix", source]:
-            get_matrix(source)
+        case ["get-build-matrix"]:
+            get_matrix()
         case _:
-            abort("Usage: matrix.py get-matrix [source] | get-matrix-force")
+            abort("Usage: matrix.py get-matrix | get-matrix-force | get-build-matrix")
 
 if __name__ == "__main__":
     main()

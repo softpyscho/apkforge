@@ -55,15 +55,10 @@ jobs:
           gh run list -L400 --repo "$GITHUB_REPOSITORY" --json databaseId -q '.[].databaseId' | tail -n+91 | xargs -IID gh api "repos/$GITHUB_REPOSITORY/actions/runs/ID" -X DELETE || true
 
   build:
-    name: build (${{ matrix.group }})
+    name: build
     needs: check-versions
     if: fromJson(needs.check-versions.outputs.build_matrix)[0] != null
-    strategy:
-      fail-fast: false
-      matrix:
-        group: ${{ fromJson(needs.check-versions.outputs.build_matrix) }}
     uses: ./.github/workflows/build.yml
     with:
-      patch_source: ${{ matrix.group }}
       filter_changelog: ${{ inputs.force_build != true }}
     secrets: inherit

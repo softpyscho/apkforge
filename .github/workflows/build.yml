@@ -1,17 +1,8 @@
 name: Build APKs
 on:
   workflow_dispatch:
-    inputs:
-      patch_source:
-        description: 'Select patch source (release-group) or "all"'
-        required: true
-        default: 'all'
-        type: string
   workflow_call:
     inputs:
-      patch_source:
-        default: 'all'
-        type: string
       filter_changelog:
         default: false
         type: boolean
@@ -50,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VER="$(date +%y.%m.%d)-${{ inputs.patch_source }}"
+          VER="$(date +%y.%m.%d)"
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
           if gh release view "$VER" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$VER" --draft --repo "$GITHUB_REPOSITORY"
@@ -64,7 +55,7 @@ jobs:
           FILTER_CHANGELOG: ${{ inputs.filter_changelog }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RESULT="$(uv run python -m src.scripts.matrix get-matrix '${{ inputs.patch_source }}')"
+          RESULT="$(uv run python -m src.scripts.matrix get-build-matrix)"
           echo "matrix=$(echo "$RESULT" | jq -c '{include}')" >> "$GITHUB_OUTPUT"
           echo "prerelease=$(echo "$RESULT" | jq -r '.prerelease')" >> "$GITHUB_OUTPUT"
 
@@ -260,7 +251,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_CHAT: ${{ secrets.TG_CHAT }}
-        run: uv run python -m src.scripts.telegram notify '${{ inputs.patch_source }}'
+        run: uv run python -m src.scripts.telegram notify
 
       - name: Delete empty draft if no APKs
         if: steps.check.outputs.has_apks != 'true'

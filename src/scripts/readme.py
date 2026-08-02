@@ -67,24 +67,27 @@ def _badge_name(source: str) -> str:
 
 def _version_label(entry, versions_cache: dict[str, str]) -> str:
     """Generate a human-readable version strategy label."""
+    color = entry.badge_color or "3e9cfb"
     if entry.version in ("auto", "latest"):
         v = versions_cache.get(entry.table)
         if v:
             encoded_v = urllib.parse.quote(f"v{v}" if not v.startswith("v") else v, safe="")
-            color = entry.badge_color or "3e9cfb"
             return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
             
     if entry.version == "auto":
-        return "Auto"
+        return f'![version](https://img.shields.io/badge/version-Auto-{color}?logo=android&logoColor=white)'
     elif entry.version == "latest":
         # Check if any patch spec uses dev version
+        label = "Latest"
         for spec in entry.patches.values():
             if isinstance(spec, dict) and spec.get("version") == "dev":
-                return "Latest (dev)"
-        return "Latest"
+                label = "Latest (dev)"
+                break
+        encoded_v = urllib.parse.quote(label, safe="")
+        return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
     else:
         encoded_v = urllib.parse.quote(f"v{entry.version}" if not entry.version.startswith("v") else entry.version, safe="")
-        return f'![version](https://img.shields.io/badge/version-{encoded_v}-3e9cfb?logo=android&logoColor=white)'
+        return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
 
 
 def _load_versions_cache() -> dict[str, str]:
@@ -177,9 +180,9 @@ def _obtainium_link(entry) -> str:
     """Generate an Obtainium deep link for this specific app."""
     name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
     
-    # We use exactly matching regex to avoid any crosstalk
-    apk_filter = f"^{entry.table}-{entry.release_group}-.*-{entry.arch}\\.apk$"
-    version_extractor = f"^{entry.table}-{entry.release_group}-v(.*)-{entry.arch}\\.apk$"
+    base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
+    apk_filter = f"^{base_name}-.*-{entry.arch}\\.apk$"
+    version_extractor = f"^{base_name}-v(.*)-{entry.arch}\\.apk$"
     
     settings = {
         "includePrereleases": False,
@@ -225,7 +228,7 @@ def _obtainium_link(entry) -> str:
     
     encoded_payload = urllib.parse.quote(json.dumps(payload), safe="")
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/{encoded_payload}"
-    badge_img = '![Add to Obtainium](https://img.shields.io/badge/Add%20to%20Obtainium-8b5cf6?style=for-the-badge)'
+    badge_img = f'![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-{entry.badge_color or "8b5cf6"}?style=flat-square&logo=android&logoColor=white)'
     return f"[{badge_img}]({deep_link})"
 
 
@@ -284,7 +287,8 @@ def generate_apps_section() -> str:
             lines.append(f"> **Source:** [`{label}`]({url})")
         lines.append("")
 
-        # App table
+        lines.append("<div align=\"center\">")
+        lines.append("")
         lines.append("| App | Arch | Version | Patches | Obtainium |")
         lines.append("|:---|:----:|:-------:|:--------|:---------:|")
 
@@ -299,6 +303,8 @@ def generate_apps_section() -> str:
 
             lines.append(f"| {badge} | {arch} | {version} | {patches} | {obtainium} |")
 
+        lines.append("")
+        lines.append("</div>")
         lines.append("")
         lines.append("---")
         lines.append("")
