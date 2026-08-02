@@ -101,7 +101,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Cache stock APKs
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: unmodified-apks/
           key: apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}
