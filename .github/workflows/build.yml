@@ -19,11 +19,6 @@ on:
 permissions:
   contents: read
 
-# Cancel superseded runs within the same release-group.
-concurrency:
-  group: build-${{ inputs.patch_source }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
-
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -106,23 +101,12 @@ jobs:
         run: uv sync --frozen
 
       - name: Cache stock APKs
-        uses: actions/cache@v4  # v4.2.2
+        uses: actions/cache@v4
         with:
           path: unmodified-apks/
           key: apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}
           restore-keys: |
             apk-cache-${{ matrix.id }}-
-
-      - name: Cache JVM dependencies (Maven + Gradle)
-        uses: actions/cache@v4  # v4.2.2
-        with:
-          path: |
-            ~/.m2/repository
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: jvm-deps-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            jvm-deps-${{ runner.os }}-
 
       - name: Build APKs
         env:
@@ -210,7 +194,7 @@ jobs:
           mkdir -p logs patches
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "build-*.md" --dir logs
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "patches_info-*.json" --dir patches || true
-          uv run python -m src.scripts.merge_patches_info --root patches --output patches_info.json
+          uv run python -c "import json, glob, pathlib; merged = json.loads(pathlib.Path('patches_info.json').read_text()) if pathlib.Path('patches_info.json').exists() else {}; [merged.update(json.loads(pathlib.Path(f).read_text())) for f in glob.glob('patches/*.json')]; pathlib.Path('patches_info.json').write_text(json.dumps(merged, indent=2))"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name | startswith("build-") or startswith("patches_info-")) | .apiUrl' | xargs -I{} gh api --method DELETE "{}"
 
       - name: Combine logs and finalize release

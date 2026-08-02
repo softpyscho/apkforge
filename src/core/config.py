@@ -1,6 +1,6 @@
 # ---------------------------------------------------------
 # Copyright (C) 2026 softpsycho
-#
+# 
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.
 # Canonical source: https://github.com/softpsycho/apkforge
@@ -11,12 +11,10 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
-from __future__ import annotations
-
 import os
 import shlex
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 TEMP_DIR: Path = Path("temp")
@@ -34,16 +32,10 @@ ORIGINAL_APK_DIR.mkdir(parents=True, exist_ok=True)
 @dataclass(slots=True, frozen=True)
 class Config:
     parallel_jobs: int
-    network_concurrency: int
     cli_version: str
     cli_source: str
     brand: str
     strict_sigcheck: bool
-    apksigner_path: Path
-    keystore_path: Path
-    allow_insecure: bool
-    aliases: dict[str, str] = field(default_factory=dict)
-
 
 @dataclass(slots=True, frozen=True)
 class AppEntry:
@@ -78,51 +70,20 @@ def _parse_bool(d: dict[str, object], key: str, default: bool) -> bool:
 
     raise ValueError(f"'{key}' must be a boolean (true/false without quotes), got {type(value).__name__}")
 
-def _parse_aliases(data: dict[str, object]) -> dict[str, str]:
-    """Read the optional ``[aliases]`` table from config.
-
-    Maps lowercase aliases to canonical package names, e.g.::
-
-        [aliases]
-        youtube = "com.google.android.youtube"
-
-    Used by ``_find_pkg_name`` to override mirror-side package names that
-    don't match the Play Store identifier.
-    """
-    raw = data.get("aliases", {})
-    if not isinstance(raw, dict):
-        raise ValueError("'aliases' must be a TOML table of alias = \"package.name\"")
-    return {str(k).strip().lower(): str(v).strip() for k, v in raw.items() if str(k).strip() and str(v).strip()}
-
-def _cpu_count() -> int:
-    """Return the number of CPUs available, falling back gracefully on
-    Python < 3.13 where ``os.process_cpu_count`` doesn't exist."""
-    count_fn = getattr(os, "process_cpu_count", None) or os.cpu_count
-    return count_fn() or 1
-
-
 def parse_config(data: dict[str, object]) -> Config:
-    default_jobs = min(_cpu_count(), 2) if os.getenv("GITHUB_ACTIONS") else _cpu_count()
+    default_jobs = min(os.process_cpu_count() or 1, 2) if os.getenv("GITHUB_ACTIONS") else (os.process_cpu_count() or 1)
     return Config(
         parallel_jobs=int(data.get("parallel-jobs", default_jobs)),
-        network_concurrency=int(data.get("network-concurrency", 4)),
         brand=str(data.get("brand", "Morphe")),
         cli_version=str(data.get("cli-version", "latest")),
         cli_source=str(data.get("cli-source", "github:MorpheApp/morphe-desktop")),
         strict_sigcheck=_parse_bool(data, "strict-sigcheck", True),
-        apksigner_path=Path(str(data.get("apksigner-path", "bin/apksigner.jar"))),
-        keystore_path=Path(str(data.get("keystore-path", "morphe.keystore"))),
-        allow_insecure=_parse_bool(data, "allow-insecure", False) or os.getenv("APKFORGE_INSECURE", "").lower() in ("1", "true", "yes"),
-        aliases=_parse_aliases(data),
     )
 
 def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
     entries: list[AppEntry] = []
     for table_name, t in data.items():
         if not isinstance(t, dict):
-            continue
-        # Skip non-app tables.
-        if table_name == "aliases":
             continue
 
         if (arch := str(t.get("arch", "all"))) not in VALID_ARCHES:
@@ -177,7 +138,7 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             enabled=_parse_bool(t, "enabled", True),
             changelog_keywords=keywords,
         ))
-
+        
     validate_config(entries)
     return entries
 
@@ -188,13 +149,13 @@ def validate_config(entries: list[AppEntry]) -> None:
         if e.table in seen_tables:
             raise ValueError(f"Duplicate table name: '{e.table}'")
         seen_tables.add(e.table)
-
+        
         if not e.patches:
             raise ValueError(f"'{e.table}' has no patches defined")
-
+        
         if not e.dl_urls:
             raise ValueError(f"'{e.table}' has no download URLs defined")
-
+        
         for src in e.patches:
             if not src.startswith(("github:", "gitlab:")):
                 raise ValueError(f"'{e.table}' patch source '{src}' must start with 'github:' or 'gitlab:'")

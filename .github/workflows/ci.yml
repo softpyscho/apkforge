@@ -14,11 +14,6 @@ permissions:
   contents: write
   actions: write
 
-# Don't queue up multiple scheduled runs of the daily check.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   check-versions:
     runs-on: ubuntu-latest

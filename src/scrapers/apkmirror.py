@@ -106,12 +106,7 @@ class APKMirrorScraper(BaseScraper):
                 b_type = badge.get_text(strip=True).upper() if badge else "APK"
                 arch_text = cells[1].get_text(strip=True)
                 dpi_text = cells[3].get_text(strip=True)
-                # Accept any dpi if the request didn't specify one, OR if the
-                # row reports nodpi / anydpi, OR if it matches the requested dpi
-                # exactly. (Previously a ``re.match(r"\d+-640dpi", dpi_text)``
-                # clause appeared here but it was effectively dead code that
-                # never matched anything useful.)
-                dpi_ok = not dpi_text or dpi_text in {"nodpi", "anydpi"} or (dpi and dpi_text == dpi)
+                dpi_ok = not dpi_text or re.match(r"\d+-640dpi", dpi_text) or dpi_text in {"nodpi", "anydpi"} or (dpi and dpi_text == dpi)
                 if b_type == bundle_type and arch_text in apparch and dpi_ok:
                     return urljoin("https://www.apkmirror.com", str(link["href"])), bundle_type
         return None

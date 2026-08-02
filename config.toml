@@ -2,15 +2,6 @@ parallel-jobs = 1
 strict-sigcheck = false
 brand = "morphe"
 
-# Aliases map lowercase mirror-side package names to their canonical Play
-# Store identifiers. Used by _find_pkg_name when an app's mirror page reports
-# a different package name than the one expected by the patch source.
-# Leave empty if you don't need any.
-[aliases]
-# youtube = "com.google.android.youtube"
-# youtube-music = "com.google.android.apps.youtube.music"
-# tiktok = "com.ss.android.ugc.trill"
-
 [Reddit]
 pkg-name = "com.reddit.frontpage"
 badge-color = "FF4500"
