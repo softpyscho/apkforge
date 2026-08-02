@@ -11,7 +11,10 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
+import json
+import os
 import sys
+import urllib.parse
 from pathlib import Path
 
 from src.core.logger import IS_GITHUB, abort
@@ -21,13 +24,11 @@ def _require_ci(script: str) -> None:
     if not IS_GITHUB:
         abort(f"'{script}' is only available in GitHub Actions")
 
-def _parse_log_file(log: Path, green_lines: list[str], collected: list[str]) -> str:
+def _parse_log_file(log: Path, collected: list[str]) -> str:
     microg_line = ""
     lines = [s for ln in log.read_text(encoding="utf-8").splitlines() if (s := ln.strip())]
     for i, line in enumerate(lines):
-        if line.startswith("- 🟢"):
-            green_lines.append(f"{line}  ")
-        elif not microg_line and line.startswith("▶️") and "MicroG" in line:
+        if not microg_line and line.startswith("▶️") and "MicroG" in line:
             microg_line = line
         elif line.startswith("> ⚙️ » CLI:"):
             collected.append(f"{line}  ")
@@ -38,24 +39,59 @@ def _parse_log_file(log: Path, green_lines: list[str], collected: list[str]) -> 
 
 def combine_logs(logs_dir: Path | str) -> None:
     logs = sorted(Path(logs_dir).rglob("build*.md"))
-    if not logs:
-        return
+    
+    # Load versions and patches info
+    versions_info = {"success": []}
+    if Path("versions_info.json").exists():
+        versions_info = json.loads(Path("versions_info.json").read_text(encoding="utf-8"))
+        
+    patches_info = {}
+    if Path("patches_info.json").exists():
+        patches_info = json.loads(Path("patches_info.json").read_text(encoding="utf-8"))
 
-    green_lines: list[str] = []
     collected: list[str] = []
     microg_line = ""
     for log in logs:
-        m_line = _parse_log_file(log, green_lines, collected)
+        m_line = _parse_log_file(log, collected)
         if not microg_line:
             microg_line = m_line
 
-    if green_lines:
-        print("\n".join(green_lines), end="\n\n")
+    repo = os.getenv('GITHUB_REPOSITORY', 'softpsycho/apkforge')
+    
+    print("## 🚀 Built Applications\n")
+    print("| App | Version | Architecture | Download & Patches |")
+    print("|:---|:-------:|:------------:|:---------|")
+    
+    for success in versions_info.get("success", []):
+        app = success.get("app", "")
+        version = success.get("version", "")
+        apk = success.get("apk", "")
+        
+        # Parse architecture from label if possible, or fallback
+        label = success.get("label", "")
+        arch = "arm64-v8a"
+        if "(" in label and ")" in label:
+            arch = label.split("(")[-1].strip(")")
+            
+        # Get patches for this app
+        app_patches = patches_info.get(app, [])
+        patch_count = len(app_patches)
+        patch_details = "<br>".join(app_patches)
+        
+        # URL encode the APK filename
+        apk_encoded = urllib.parse.quote(apk)
+        download_link = f"https://github.com/{repo}/releases/download/{{TAG}}/{apk_encoded}"
+        
+        details_html = f"<details><summary><b>{patch_count} patches</b></summary>{patch_details}</details>" if patch_count > 0 else ""
+        
+        print(f"| **{app}** | `{version}` | `{arch}` | [⬇️ APK]({download_link}) {details_html} |")
 
+    print("")
     if microg_line:
         print(microg_line, end="\n\n")
 
     if unique := list(dict.fromkeys(collected)):
+        print("---\n### ⚙️ Patch Sources & CLI\n")
         print("\n\n".join(unique))
 
 def main() -> None:
