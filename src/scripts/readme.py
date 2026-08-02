@@ -90,7 +90,7 @@ def _load_patches_cache() -> dict[str, list[str]]:
     return {}
 
 
-def _patches_label(entry, patches_cache: dict[str, list[str]]) -> str:
+def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: set[str] = None) -> str:
     """Describe which patches are applied."""
     all_includes = []
     all_excludes = []
@@ -116,6 +116,10 @@ def _patches_label(entry, patches_cache: dict[str, list[str]]) -> str:
     elif entry.exclusive_patches and all_includes:
         applied.update(all_includes)
         applied.difference_update(all_excludes)
+
+    if general_patches:
+        to_remove = general_patches - set(all_includes)
+        applied.difference_update(to_remove)
 
     options_str = ""
     if entry.patcher_args:
@@ -197,7 +201,8 @@ def _obtainium_link(entry) -> str:
     
     encoded_payload = urllib.parse.quote(json.dumps(payload), safe="")
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/{encoded_payload}"
-    return f"[⬇️ Add]({deep_link})"
+    badge_img = '<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_add_to_obtainium.png" alt="Add to Obtainium" height="35">'
+    return f"[{badge_img}]({deep_link})"
 
 
 def generate_apps_section() -> str:
@@ -218,6 +223,21 @@ def generate_apps_section() -> str:
             # Avoid duplicating an app if it appears under only one source
             if not any(e.table == entry.table for e in groups[source]):
                 groups[source].append(entry)
+
+    # Compute general patches per source
+    source_general_patches = {}
+    for source, apps in groups.items():
+        if len(apps) > 1:
+            sets = []
+            for app in apps:
+                if app.table in patches_cache:
+                    sets.append(set(patches_cache[app.table]))
+            if len(sets) > 1:
+                source_general_patches[source] = set.intersection(*sets)
+            else:
+                source_general_patches[source] = set()
+        else:
+            source_general_patches[source] = set()
 
     lines: list[str] = []
 
@@ -246,7 +266,9 @@ def generate_apps_section() -> str:
             badge = _app_badge(entry)
             arch = f"`{entry.arch}`"
             version = _version_label(entry)
-            patches = _patches_label(entry, patches_cache)
+            
+            general_patches = source_general_patches.get(source, set())
+            patches = _patches_label(entry, patches_cache, general_patches)
             obtainium = _obtainium_link(entry)
 
             lines.append(f"| {badge} | {arch} | {version} | {patches} | {obtainium} |")
