@@ -165,6 +165,21 @@ jobs:
           done
           exit 1
 
+      - name: Upload versions info to draft release
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.version }}
+          LABEL: ${{ matrix.id }}${{ matrix.arch && format('-{0}', matrix.arch) || '' }}
+        run: |
+          [[ -f build.json ]] || exit 0
+          cp build.json "versions_info-${LABEL}.json"
+          for i in {1..5}; do
+            gh release upload "$TAG" "versions_info-${LABEL}.json" --clobber --repo "$GITHUB_REPOSITORY" && exit 0
+            sleep 5
+          done
+          exit 1
+
   release:
     needs: [prepare, run]
     if: ${{ !cancelled() }}
@@ -203,11 +218,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.version }}
         run: |
-          mkdir -p logs patches
+          mkdir -p logs patches versions
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "build-*.md" --dir logs
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "patches_info-*.json" --dir patches || true
           uv run python -c "import json, glob, pathlib; merged = json.loads(pathlib.Path('patches_info.json').read_text()) if pathlib.Path('patches_info.json').exists() else {}; [merged.update(json.loads(pathlib.Path(f).read_text())) for f in glob.glob('patches/*.json')]; pathlib.Path('patches_info.json').write_text(json.dumps(merged, indent=2))"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name | startswith("build-") or startswith("patches_info-")) | .apiUrl' | xargs -I{} gh api --method DELETE "{}"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "versions_info-*.json" --dir versions || true
+          uv run python -c "import json, glob, pathlib; merged = json.loads(pathlib.Path('versions_info.json').read_text()) if pathlib.Path('versions_info.json').exists() else {'success':[]}; [merged['success'].extend(json.loads(pathlib.Path(f).read_text()).get('success', [])) for f in glob.glob('versions/*.json')]; pathlib.Path('versions_info.json').write_text(json.dumps(merged, indent=2))"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name | startswith("build-") or startswith("patches_info-") or startswith("versions_info-")) | .apiUrl' | xargs -I{} gh api --method DELETE "{}"
 
       - name: Combine logs and finalize release
         if: steps.check.outputs.has_apks == 'true'
@@ -241,8 +258,8 @@ jobs:
         if: steps.check.outputs.has_apks == 'true'
         run: |
           uv run python -m src.scripts.readme update
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add patches_info.json README.md
-          git diff --cached --quiet || git commit -m "docs: update patches info [skip ci]"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add patches_info.json versions_info.json README.md
+          git diff --cached --quiet || git commit -m "docs: update patches and versions info [skip ci]"
           git push || true
