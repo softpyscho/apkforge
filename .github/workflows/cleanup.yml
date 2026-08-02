@@ -1,0 +1,30 @@
+name: Cleanup Old Releases
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Run every Sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete pre-release tags older than 14 days
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch all pre-releases older than 14 days
+          OLDER_RELEASES=$(gh api repos/$GITHUB_REPOSITORY/releases --jq '.[] | select(.prerelease==true and ( .published_at | fromdateiso8601 < (now - (14 * 86400)) )) | .tag_name')
+          
+          if [ -z "$OLDER_RELEASES" ]; then
+            echo "No old pre-releases to delete."
+            exit 0
+          fi
+          
+          for tag in $OLDER_RELEASES; do
+            echo "Deleting release: $tag"
+            gh release delete "$tag" --cleanup-tag --yes
+          done

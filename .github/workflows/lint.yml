@@ -1,0 +1,49 @@
+name: Lint & Sync README
+
+on:
+  push:
+    paths:
+      - 'config.toml'
+      - 'src/**'
+  pull_request:
+    paths:
+      - 'config.toml'
+      - 'src/**'
+
+permissions:
+  contents: write
+
+jobs:
+  lint-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          quiet: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Validate Config
+        run: uv run python -c "from src.core.config import load_toml, parse_config, parse_app_entries, CONFIG_PATH; data = load_toml(CONFIG_PATH); parse_app_entries(data, parse_config(data))"
+
+      - name: Sync README with config.toml
+        if: github.event_name == 'push'
+        run: uv run python -m src.scripts.readme update
+
+      - name: Commit README if changed
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet || git commit -m "docs: auto-sync README with config.toml [skip ci]"
+          git push
