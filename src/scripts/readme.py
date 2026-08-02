@@ -129,9 +129,12 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
 
     if has_cache or (entry.exclusive_patches and all_includes):
         sorted_patches = sorted(applied, key=lambda x: x.lower())
-        patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
-        summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
-        result = f"<details>{summary}{patch_list}{options_str}</details>"
+        if not sorted_patches:
+            result = f"*(Standard patches)*{options_str}"
+        else:
+            patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
+            summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
+            result = f"<details>{summary}{patch_list}{options_str}</details>"
     else:
         result = f"*(Pending cache update)*{options_str}"
 
