@@ -119,7 +119,9 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
 
     if general_patches:
         to_remove = general_patches - set(all_includes)
-        applied.difference_update(to_remove)
+        applied_specific = applied - to_remove
+        if applied_specific:
+            applied = applied_specific
 
     options_str = ""
     if entry.patcher_args:
@@ -129,12 +131,9 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
 
     if has_cache or (entry.exclusive_patches and all_includes):
         sorted_patches = sorted(applied, key=lambda x: x.lower())
-        if not sorted_patches:
-            result = f"*(Standard patches)*{options_str}"
-        else:
-            patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
-            summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
-            result = f"<details>{summary}{patch_list}{options_str}</details>"
+        patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
+        summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
+        result = f"<details>{summary}{patch_list}{options_str}</details>"
     else:
         result = f"*(Pending cache update)*{options_str}"
 
@@ -205,7 +204,7 @@ def _obtainium_link(entry) -> str:
     encoded_payload = urllib.parse.quote(json.dumps(payload), safe="")
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/{encoded_payload}"
     badge_img = '<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_add_to_obtainium.png" alt="Add to Obtainium" height="35">'
-    return f"[{badge_img}]({deep_link})"
+    return f"<a href=\"{deep_link}\">{badge_img}</a>"
 
 
 def generate_apps_section() -> str:
