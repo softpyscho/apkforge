@@ -203,8 +203,8 @@ def _obtainium_link(entry) -> str:
     
     encoded_payload = urllib.parse.quote(json.dumps(payload), safe="")
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/{encoded_payload}"
-    badge_img = '<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_add_to_obtainium.png" alt="Add to Obtainium" height="35">'
-    return f"<a href=\"{deep_link}\">{badge_img}</a>"
+    badge_img = '![Add to Obtainium](https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_add_to_obtainium.png)'
+    return f"[{badge_img}]({deep_link})"
 
 
 def generate_apps_section() -> str:
