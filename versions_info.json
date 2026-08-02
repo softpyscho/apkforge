@@ -1,6 +1,12 @@
 {
   "success": [
     {
+      "app": "Instagram",
+      "label": "Instagram (arm64-v8a)",
+      "version": "439.0.0.37.89",
+      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk"
+    },
+    {
       "app": "Xodo",
       "label": "Xodo (arm64-v8a)",
       "version": "10.15.0",
