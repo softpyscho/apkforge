@@ -29,6 +29,7 @@ apkpure-dlurl = "https://apkpure.com/x/com.twitter.android"
 [Twitter.patches]
 "github:crimera/piko" = []
 
+
 [Instagram]
 pkg-name = "com.instagram.android"
 badge-color = "FF0069"
@@ -40,8 +41,8 @@ uptodown-dlurl = "https://instagram.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/instagram/com.instagram.android"
 github-dlurl = "https://github.com/softpsycho/apkforge/releases/tag/com.instagram.android"
 
-[Instagram.patches."github:crimera/piko"]
-version = "dev"
+[Instagram.patches]
+"github:crimera/piko" = { version = "dev" }
 
 [WARP]
 pkg-name = "com.cloudflare.onedotonedotonedotone"
@@ -67,9 +68,7 @@ uptodown-dlurl = "https://cashew.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/cashew/com.budget.tracker.finance"
 
 [Cashew.patches]
-"github:rushiranpise/morphe-patches" = [
-    "Unlock Pro",
-]
+"github:rushiranpise/morphe-patches" = { include = ["Unlock Pro"] }
 
 [Splitwise]
 pkg-name = "com.Splitwise.SplitwiseMobile"
