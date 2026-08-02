@@ -99,33 +99,37 @@ def _patches_label(entry, patches_cache: dict[str, list[str]]) -> str:
         all_includes.extend(spec.get("include", []))
         all_excludes.extend(spec.get("exclude", []))
 
-    if entry.table in patches_cache and patches_cache[entry.table]:
-        applied = set()
+    if entry.patcher_args:
+        enabled = re.findall(r"-e\s+'([^']+)'", " ".join(entry.patcher_args))
+        disabled = re.findall(r"-d\s+'([^']+)'", " ".join(entry.patcher_args))
+        all_includes.extend(enabled)
+        all_excludes.extend(disabled)
+
+    applied = set()
+    has_cache = entry.table in patches_cache and patches_cache[entry.table]
+
+    if has_cache:
         if not entry.exclusive_patches:
             applied.update(patches_cache[entry.table])
         applied.update(all_includes)
         applied.difference_update(all_excludes)
-        
-        result = ", ".join(f"`{p}`" for p in sorted(applied, key=lambda x: x.lower()))
-    else:
-        # If cache is missing, show included/excluded if exclusive, else fallback
-        if entry.exclusive_patches and all_includes:
-            result = ", ".join(f"`{p}`" for p in sorted(all_includes, key=lambda x: x.lower()))
-        else:
-            result = "*(Pending cache update)*"
+    elif entry.exclusive_patches and all_includes:
+        applied.update(all_includes)
+        applied.difference_update(all_excludes)
 
-    # Check for custom patcher-args
+    options_str = ""
     if entry.patcher_args:
-        # Extract -e 'PatchName' patterns
-        enabled = re.findall(r"-e\s+'([^']+)'", " ".join(entry.patcher_args))
-        # Extract -OappName='...' patterns
         options = re.findall(r"-O(\w+)='([^']+)'", " ".join(entry.patcher_args))
-        if enabled:
-            extra = ", ".join(f"`{p}`" for p in enabled)
-            result += f" + {extra}"
         if options:
-            opts = ", ".join(f"{k}={v}" for k, v in options)
-            result += f" ({opts})"
+            options_str = "<br>⚙️ " + ", ".join(f"{k}={v}" for k, v in options)
+
+    if has_cache or (entry.exclusive_patches and all_includes):
+        sorted_patches = sorted(applied, key=lambda x: x.lower())
+        patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
+        summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
+        result = f"<details>{summary}{patch_list}{options_str}</details>"
+    else:
+        result = f"*(Pending cache update)*{options_str}"
 
     return result
 
