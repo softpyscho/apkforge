@@ -62,7 +62,46 @@ def combine_logs(logs_dir: Path | str) -> None:
     print("| App | Version | Architecture | Download & Patches |")
     print("|:---|:-------:|:------------:|:---------|")
     
-    for success in versions_info.get("success", []):
+    from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
+    from src.scripts.readme import _patches_label
+    
+    data = load_toml(CONFIG_PATH)
+    config = parse_config(data)
+    entries = parse_app_entries(data, config)
+    
+    # Group entries by patch source to compute general patches
+    groups = {}
+    for entry in entries:
+        if not entry.enabled: continue
+        for source in entry.patches:
+            if source not in groups: groups[source] = []
+            if not any(e.table == entry.table for e in groups[source]):
+                groups[source].append(entry)
+                
+    source_general_patches = {}
+    for source, apps in groups.items():
+        if len(apps) > 1:
+            sets = []
+            for app in apps:
+                if app.table in patches_info:
+                    sets.append(set(patches_info[app.table]))
+            if len(sets) > 1:
+                source_general_patches[source] = set.intersection(*sets)
+            else:
+                source_general_patches[source] = set()
+        else:
+            source_general_patches[source] = set()
+            
+    # Deduplicate versions list to prevent duplicates
+    unique_success = []
+    seen = set()
+    for s in versions_info.get("success", []):
+        key = (s.get("app"), s.get("version"), s.get("label"))
+        if key not in seen:
+            seen.add(key)
+            unique_success.append(s)
+            
+    for success in unique_success:
         app = success.get("app", "")
         version = success.get("version", "")
         apk = success.get("apk", "")
@@ -73,16 +112,21 @@ def combine_logs(logs_dir: Path | str) -> None:
         if "(" in label and ")" in label:
             arch = label.split("(")[-1].strip(")")
             
-        # Get patches for this app
-        app_patches = patches_info.get(app, [])
-        patch_count = len(app_patches)
-        patch_details = "<br>".join(app_patches)
-        
         # URL encode the APK filename
         apk_encoded = urllib.parse.quote(apk)
         download_link = f"https://github.com/{repo}/releases/download/{{TAG}}/{apk_encoded}"
         
-        details_html = f"<details><summary><b>{patch_count} patches</b></summary>{patch_details}</details>" if patch_count > 0 else ""
+        # Get patches for this app using readme logic
+        entry = next((e for e in entries if e.table == app), None)
+        if entry:
+            source = list(entry.patches.keys())[0] if entry.patches else None
+            general_patches = source_general_patches.get(source, set())
+            details_html = _patches_label(entry, patches_info, general_patches)
+        else:
+            app_patches = patches_info.get(app, [])
+            patch_count = len(app_patches)
+            patch_details = "<br>".join(app_patches)
+            details_html = f"<details><summary><b>{patch_count} patches</b></summary>{patch_details}</details>" if patch_count > 0 else ""
         
         print(f"| **{app}** | `{version}` | `{arch}` | [⬇️ APK]({download_link}) {details_html} |")
 
