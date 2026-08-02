@@ -108,6 +108,21 @@ jobs:
           restore-keys: |
             apk-cache-${{ matrix.id }}-
 
+      - name: Cleanup old caches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh extension install actions/gh-actions-cache
+          echo "Fetching list of cache keys"
+          cacheKeysForPR=$(gh actions-cache list -R $GITHUB_REPOSITORY --key apk-cache-${{ matrix.id }}- -L 100 | cut -f 1 )
+          set +e
+          for cacheKey in $cacheKeysForPR
+          do
+              if [ "$cacheKey" != "apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}" ]; then
+                  gh actions-cache delete $cacheKey -R $GITHUB_REPOSITORY --confirm
+              fi
+          done
+
       - name: Build APKs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

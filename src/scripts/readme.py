@@ -71,7 +71,8 @@ def _version_label(entry, versions_cache: dict[str, str]) -> str:
         v = versions_cache.get(entry.table)
         if v:
             encoded_v = urllib.parse.quote(f"v{v}" if not v.startswith("v") else v, safe="")
-            return f'![version](https://img.shields.io/badge/version-{encoded_v}-3e9cfb?logo=android&logoColor=white)'
+            color = entry.badge_color or "3e9cfb"
+            return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
             
     if entry.version == "auto":
         return "Auto"

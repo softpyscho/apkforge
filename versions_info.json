@@ -3,6 +3,18 @@
     {
       "app": "Cashew",
       "version": "6.6.11"
+    },
+    {
+      "app": "WARP",
+      "version": "6.33"
+    },
+    {
+      "app": "Splitwise",
+      "version": "24.7.4"
+    },
+    {
+      "app": "Greenify",
+      "version": "5.0.0"
     }
   ]
 }
