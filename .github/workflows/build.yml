@@ -128,7 +128,11 @@ jobs:
             echo "No APKs to upload, skipping"
             exit 0
           fi
-          gh release upload "$TAG" "${apks[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          for i in {1..5}; do
+            gh release upload "$TAG" "${apks[@]}" --clobber --repo "$GITHUB_REPOSITORY" && exit 0
+            sleep 5
+          done
+          exit 1
 
       - name: Upload build log to draft release
         if: always()
@@ -140,7 +144,11 @@ jobs:
           [[ -f build.md ]] || exit 0
           [[ -s build.md ]] || exit 0
           cp build.md "build-${LABEL}.md"
-          gh release upload "$TAG" "build-${LABEL}.md" --clobber --repo "$GITHUB_REPOSITORY"
+          for i in {1..5}; do
+            gh release upload "$TAG" "build-${LABEL}.md" --clobber --repo "$GITHUB_REPOSITORY" && exit 0
+            sleep 5
+          done
+          exit 1
 
       - name: Upload patches info to draft release
         if: always()
@@ -151,7 +159,11 @@ jobs:
         run: |
           [[ -f patches_info.json ]] || exit 0
           cp patches_info.json "patches_info-${LABEL}.json"
-          gh release upload "$TAG" "patches_info-${LABEL}.json" --clobber --repo "$GITHUB_REPOSITORY"
+          for i in {1..5}; do
+            gh release upload "$TAG" "patches_info-${LABEL}.json" --clobber --repo "$GITHUB_REPOSITORY" && exit 0
+            sleep 5
+          done
+          exit 1
 
   release:
     needs: [prepare, run]
