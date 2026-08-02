@@ -106,7 +106,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Cache stock APKs
-        uses: actions/cache@d4323d4df104b026fc6a6a647fd895d2bd726ee3  # v4.2.2
+        uses: actions/cache@v4  # v4.2.2
         with:
           path: unmodified-apks/
           key: apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}
@@ -114,7 +114,7 @@ jobs:
             apk-cache-${{ matrix.id }}-
 
       - name: Cache JVM dependencies (Maven + Gradle)
-        uses: actions/cache@d4323d4df104b026fc6a6a647fd895d2bd726ee3  # v4.2.2
+        uses: actions/cache@v4  # v4.2.2
         with:
           path: |
             ~/.m2/repository
