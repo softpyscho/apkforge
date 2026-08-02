@@ -92,15 +92,31 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Cache stock APKs
-        uses: actions/cache@v4
+      - name: Restore stock APKs
+        uses: actions/cache/restore@v4
         with:
           path: unmodified-apks/
-          key: apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}
+          key: apk-cache-${{ matrix.id }}-${{ github.run_id }}
           restore-keys: |
             apk-cache-${{ matrix.id }}-
 
+      - name: Build APKs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+        run: uv run main.py ${{ matrix.id }} ${{ matrix.arch }}
+
+      - name: Save stock APKs
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: unmodified-apks/
+          key: apk-cache-${{ matrix.id }}-${{ hashFiles('unmodified-apks/*') }}
+
       - name: Cleanup old caches
+        if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -110,18 +126,10 @@ jobs:
           set +e
           for cacheKey in $cacheKeysForPR
           do
-              if [ "$cacheKey" != "apk-cache-${{ matrix.id }}-${{ hashFiles('config.toml') }}" ]; then
+              if [ "$cacheKey" != "apk-cache-${{ matrix.id }}-${{ hashFiles('unmodified-apks/*') }}" ]; then
                   gh actions-cache delete $cacheKey -R $GITHUB_REPOSITORY --confirm
               fi
           done
-
-      - name: Build APKs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
-        run: uv run main.py ${{ matrix.id }} ${{ matrix.arch }}
 
       - name: Upload APKs to draft release
         if: always()
