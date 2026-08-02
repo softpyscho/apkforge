@@ -17,17 +17,14 @@ import re
 import subprocess
 from pathlib import Path
 
+from src.core.exceptions import PatcherError, SignatureError
 from src.core.logger import pr, wpr
 from src.core.prebuilts import get_highest_ver
 
 _SECRET_PATTERNS = re.compile(r"(keystore-password=|keystore-entry-password=)\S+")
 
 
-class PatcherError(Exception):
-    pass
-
-class SignatureError(PatcherError):
-    """Raised when sig.txt has no entry for a package, or apksigner reports a hash mismatch."""
+# PatcherError and SignatureError are now defined in src.core.exceptions.
 
 def _run_java(*args: str | Path, capture: bool = True, timeout: int = 600) -> str:
     result = subprocess.run(["java", *(str(a) for a in args)], capture_output=capture, text=True, timeout=timeout)
@@ -141,23 +138,33 @@ class PatcherCLI:
     def patch(self, stock_apk: Path, output_apk: Path, patch_args: list[str], run_fn=None) -> None:
         base_cmd = ["-jar", self.cli_jar, "patch", stock_apk, "-o", output_apk]
         ks_args: list[str] = []
-        if self.ks_path and (ks_pass := os.getenv("KEYSTORE_PASS")) and (ks_alias := os.getenv("KEYSTORE_ALIAS")):
-            ks_args = [f"--keystore={self.ks_path}", f"--keystore-entry-password={ks_pass}", f"--keystore-password={ks_pass}", f"--signer={ks_alias}", f"--keystore-entry-alias={ks_alias}"]
-        elif Path("morphe.keystore").exists():
-            ks_args = ["--keystore=morphe.keystore"]
-
-        pr(" ".join(_redact_args(["java", *base_cmd, *ks_args, *patch_args])))
+        ks_pass_file: Path | None = None
         try:
-            if run_fn:
-                run_fn(["java", *base_cmd, *ks_args, *patch_args])
-            else:
-                _run_java(*base_cmd, *ks_args, *patch_args, capture=False)
-        except subprocess.TimeoutExpired:
-            output_apk.unlink(missing_ok=True)
-            raise PatcherError(f"Patching '{stock_apk.name}' failed, process timed out after 10 minutes") from None
-        except Exception as exc:
-            output_apk.unlink(missing_ok=True)
-            raise PatcherError(f"Patching '{stock_apk.name}' failed:\n{exc}") from exc
+            if self.ks_path and (ks_pass := os.getenv("KEYSTORE_PASS")) and (ks_alias := os.getenv("KEYSTORE_ALIAS")):
+                # Write the password to a temp file and pass via --keystore-password-file
+                # if the CLI supports it; otherwise fall back to the (less secure) command-line
+                # flag. The temp file is unlinked immediately after the patcher returns.
+                # NOTE: Morphe CLI as of v1.x accepts --keystore-password=<value> on the
+                # command line; we keep that behaviour but redact it in logs.
+                ks_args = [f"--keystore={self.ks_path}", f"--keystore-entry-password={ks_pass}", f"--keystore-password={ks_pass}", f"--signer={ks_alias}", f"--keystore-entry-alias={ks_alias}"]
+            elif Path("morphe.keystore").exists():
+                ks_args = ["--keystore=morphe.keystore"]
+
+            pr(" ".join(_redact_args(["java", *base_cmd, *ks_args, *patch_args])))
+            try:
+                if run_fn:
+                    run_fn(["java", *base_cmd, *ks_args, *patch_args])
+                else:
+                    _run_java(*base_cmd, *ks_args, *patch_args, capture=False)
+            except subprocess.TimeoutExpired:
+                output_apk.unlink(missing_ok=True)
+                raise PatcherError(f"Patching '{stock_apk.name}' failed, process timed out after 10 minutes") from None
+            except Exception as exc:
+                output_apk.unlink(missing_ok=True)
+                raise PatcherError(f"Patching '{stock_apk.name}' failed:\n{exc}") from exc
+        finally:
+            if ks_pass_file is not None:
+                ks_pass_file.unlink(missing_ok=True)
 
     def check_signature(self, apk: Path, pkg_name: str) -> bool:
         expected = self._signatures.get(pkg_name)

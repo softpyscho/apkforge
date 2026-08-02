@@ -16,6 +16,7 @@ import re
 from pathlib import Path
 
 from src.core.config import TEMP_DIR
+from src.core.exceptions import PrebuiltsError
 from src.core.logger import pr, wpr
 from src.core.network import NetworkManager
 
@@ -23,8 +24,7 @@ APKSIGNER: Path = Path("bin/apksigner.jar")
 _KNOWN_PREFIXES = ("gitlab:", "github:")
 
 
-class PrebuiltsError(Exception):
-    pass
+# Backwards-compatible alias. The class is now defined in src.core.exceptions.
 
 def _ver_key(ver: str) -> tuple[int, ...]:
     base = ver.split("-")[0]
@@ -136,10 +136,31 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
     return file, _build_changelog(tag, org, asset["name"], tag_name, gitlab, clean_src)
 
 def _find_cached(dir_path: Path, name_ver: str, ext: str) -> Path | None:
-    pattern = f"*.{ext}" if name_ver == "*" else f"*{name_ver.lstrip('v')}*.{ext}"
+    """Find a cached prebuilt whose filename unambiguously matches ``name_ver``.
+
+    The previous implementation used a glob ``*{ver}*.{ext}`` which incorrectly
+    matched ``1.1`` against ``1.10`` / ``1.12`` / ``1.100`` because the glob is
+    a substring match. We now glob ``*.{ext}`` and filter by a regex that
+    asserts the version is not immediately preceded or followed by another
+    digit (so ``1.1`` matches ``patch-v1.1.0.mpp`` but not
+    ``patch-v1.10.0.mpp``).
+    """
     candidates: list[Path] = []
-    for f in dir_path.glob(pattern):
+    if name_ver == "*":
+        pattern: re.Pattern[str] | None = None
+    else:
+        # Strip a leading ``v`` for compatibility with cached filenames
+        # that were saved without it.
+        ver_clean = re.escape(name_ver.lstrip("v"))
+        # Negative lookarounds: the version must not be preceded or followed
+        # by another digit. (Python's ``re`` supports lookbehind/lookahead
+        # fixed-width which is fine for a single char.)
+        pattern = re.compile(rf"(?<!\d){ver_clean}(?!\d)")
+
+    for f in dir_path.glob(f"*.{ext}"):
         if not f.is_file() or f.name.startswith("tmp."):
+            continue
+        if pattern is not None and not pattern.search(f.name):
             continue
         candidates.append(f)
     return max(candidates, key=lambda f: _ver_key(f.name), default=None)

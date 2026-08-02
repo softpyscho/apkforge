@@ -9,37 +9,101 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
+from __future__ import annotations
+
 import base64
+import json
 import os
 import re
 import shutil
-import tempfile
-import zipfile
 import subprocess
 import sys
+import tempfile
+import threading
+import zipfile
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
-import json
+from typing import TypedDict
 
-from src.core.config import BUILD_DIR, TEMP_DIR, ORIGINAL_APK_DIR, AppEntry, Config
+from src.core.config import BUILD_DIR, ORIGINAL_APK_DIR, TEMP_DIR, AppEntry, Config
+from src.core.exceptions import BuilderError
 from src.core.logger import IS_GITHUB, epr, is_interrupted, pr, wpr
 from src.core.network import NetworkError, NetworkManager
 from src.core.patcher import PatcherCLI, PatcherError, SignatureError
 from src.core.prebuilts import APKSIGNER, fetch_cli, fetch_mpp, get_highest_ver
 from src.scrapers.base import BaseScraper, DownloadResult, ScraperError
 
-_failed_signatures: set[str] = set()
-_patches_info: dict[str, list[str]] = {}
-try:
-    if Path("patches_info.json").exists():
-        _patches_info = json.loads(Path("patches_info.json").read_text(encoding="utf-8"))
-except Exception:
-    pass
+
+class BuildResult(TypedDict, total=False):
+    """Type contract for the per-app build result emitted by ``_build_single``."""
+    app: str
+    label: str
+    version: str | None
+    apk: str
+    excluded_patches: list[str]
+    success: bool
+    error: str
+    log: str | None
+    started_at: str
+    finished_at: str
+    duration_s: float
+    source: str
+    stock_apk_size: int
+
+
+@dataclass(slots=True)
+class BuildState:
+    """Per-build mutable state shared across workers.
+
+    Centralises the previously module-level ``_failed_signatures`` and
+    ``_patches_info`` collections so they are properly thread-safe and
+    scoped to a single ``run_build`` invocation rather than the process.
+    """
+    failed_signatures: set[str] = field(default_factory=set)
+    patches_info: dict[str, list[str]] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def add_failed_signature(self, table: str) -> None:
+        with self._lock:
+            self.failed_signatures.add(table)
+
+    def has_failed_signature(self, table: str) -> bool:
+        with self._lock:
+            return table in self.failed_signatures
+
+    def set_patches_info(self, table: str, patches: list[str]) -> None:
+        with self._lock:
+            self.patches_info[table] = patches
+
+    def snapshot_patches_info(self) -> dict[str, list[str]]:
+        with self._lock:
+            return {k: list(v) for k, v in self.patches_info.items()}
+
+
+# Backwards-compatible module-level singleton used by ``main.py``'s SIGINT
+# handler. ``run_build`` constructs its own scoped ``BuildState``.
+_global_state: BuildState = BuildState()
+
+
+def load_patches_info_cache() -> dict[str, list[str]]:
+    """Load ``patches_info.json`` from disk if present, else return ``{}``."""
+    cache_path = Path("patches_info.json")
+    if not cache_path.exists():
+        return {}
+    try:
+        data = json.loads(cache_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        epr(f"Could not parse patches_info.json: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): [str(p) for p in v] for k, v in data.items() if isinstance(v, list)}
 
 
 def _parse_patch_names(list_patches_output: str) -> list[str]:
     """Extract default patch names from the patcher's list-patches output."""
-    default_patches = []
+    default_patches: list[str] = []
     # Split by empty lines or INFO: to isolate each patch block
     blocks = re.split(r'\n\s*\n|\nINFO:', list_patches_output)
     for block in blocks:
@@ -50,15 +114,14 @@ def _parse_patch_names(list_patches_output: str) -> list[str]:
             default_match = re.search(r"^\s*Default:\s*(true|false)", block, re.IGNORECASE | re.MULTILINE)
             if default_match and default_match.group(1).lower() == "true":
                 default_patches.append(name)
-                
+
     # Fallback to all patches if parsing Default fails
     if not default_patches:
         return [m.group(1).strip() for m in re.finditer(r"^\s*Name:\s*(.+)$", list_patches_output, re.MULTILINE)]
     return default_patches
 
 
-class BuilderError(Exception):
-    pass
+# BuilderError is defined in src.core.exceptions and re-exported above.
 
 
 def _parse_ver(v_str: str) -> tuple:
@@ -78,15 +141,21 @@ def _parse_ver(v_str: str) -> tuple:
 
 
 def _get_versions_below(versions: list[str], target_ver: str) -> list[str]:
-    """Return versions strictly below target_ver, sorted from highest to lowest."""
-    target_key = _parse_ver(target_ver)
-    valid = []
+    """Return versions strictly below ``target_ver``, sorted from highest to lowest."""
+    try:
+        target_key = _parse_ver(target_ver)
+    except Exception as exc:  # pragma: no cover - defensive
+        raise BuilderError(f"Could not parse target version {target_ver!r}: {exc}") from exc
+
+    valid: list[str] = []
     for v in versions:
         try:
             if _parse_ver(v) < target_key:
                 valid.append(v)
-        except Exception:
+        except ValueError as exc:
+            epr(f"Skipping unparseable version {v!r}: {exc}")
             continue
+    # Sort once, in descending order.
     valid.sort(key=_parse_ver, reverse=True)
     return valid
 
@@ -125,26 +194,25 @@ def _make_scraper(source: str, net: NetworkManager) -> BaseScraper:
             raise ValueError(f"Unknown APK source: {source!r}")
 
 
-def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[str, str, set[str]]:
+def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper], aliases: dict[str, str] | None = None) -> tuple[str, str, set[str]]:
+    """Resolve the package name for ``entry``, preferring the config value.
+
+    ``aliases`` is an optional mapping of lowercase alias -> canonical package
+    name (sourced from ``[aliases]`` in ``config.toml``). It exists for the
+    handful of apps whose mirror-side package names don't match their Play
+    Store identifiers (e.g. YouTube, TikTok).
+    """
     failed: set[str] = set()
-    
-    known_pkgs = {
-        "instagram": "com.instagram.android",
-        "twitter": "com.twitter.android",
-        "x": "com.twitter.android",
-        "reddit": "com.reddit.frontpage",
-        "youtube": "com.google.android.youtube",
-        "youtube-music": "com.google.android.apps.youtube.music",
-        "tiktok": "com.ss.android.ugc.trill",
-    }
+    aliases = aliases or {}
 
     for src, url in entry.dl_urls.items():
         try:
             metadata = scrapers[src].cached_metadata(url)
-            pkg_name = getattr(entry, "pkg_name", None) or metadata.pkg_name
-            
-            if pkg_name and pkg_name.lower() in known_pkgs:
-                pkg_name = known_pkgs[pkg_name.lower()]
+            # Config takes precedence; fall back to scraper metadata.
+            pkg_name = entry.pkg_name or metadata.pkg_name
+
+            if pkg_name and pkg_name.lower() in aliases:
+                pkg_name = aliases[pkg_name.lower()]
 
             pr(f"Package name of '{entry.table}' is '{pkg_name}'")
             return pkg_name, src, failed
@@ -211,50 +279,54 @@ def _optimize_bundle(src_bundle: Path, dest_bundle: Path, target_arch: str) -> N
     """
     Reads an .apkm or .xapk bundle and writes a new one stripping out all unused
     languages (keeps only English), architectures, and densities (keeps only xxhdpi).
+
+    Iterates ``infolist()`` once and uses ``ZipInfo`` directly rather than
+    re-looking-up each entry by name (which would scan the central directory
+    a second time).
     """
     pr(f"Optimizing split bundle: Extracting base + English + xxhdpi + {target_arch}...")
-    
+
     # Regex for standard split structures
     re_lang = re.compile(r'(?:split_)?config\.([a-z]{2}(?:-[a-zA-Z]{2,3})?)\.apk', re.IGNORECASE)
     re_dpi = re.compile(r'(?:split_)?config\.(l|m|tv|h|xh|xxh|xxxh)dpi\.apk', re.IGNORECASE)
     re_abi = re.compile(r'(?:split_)?config\.(armeabi_v7a|arm64_v8a|x86|x86_64)\.apk', re.IGNORECASE)
-    
+
     target_abi = "arm64_v8a" if "arm64" in target_arch.lower() else "armeabi_v7a"
-    
+
     with zipfile.ZipFile(src_bundle, 'r') as z_in, zipfile.ZipFile(dest_bundle, 'w') as z_out:
-        for item in z_in.infolist():
-            lower_name = item.filename.lower()
-            
+        for info in z_in.infolist():
+            lower_name = info.filename.lower()
+
             # Non-APK files (like metadata) are kept to preserve bundle structure
             if not lower_name.endswith('.apk'):
-                z_out.writestr(item, z_in.read(item.filename))
+                z_out.writestr(info, z_in.read(info))
                 continue
-                
+
             keep = True
-            
+
             # Check if it's a language split we don't want
             lang_match = re_lang.search(lower_name)
             if lang_match:
                 lang = lang_match.group(1).lower()
                 if not lang.startswith('en'):
                     keep = False
-            
+
             # Check if it's a DPI split we don't want
             dpi_match = re_dpi.search(lower_name)
             if dpi_match:
                 dpi = dpi_match.group(1).lower()
                 if dpi != 'xxh':
                     keep = False
-                    
+
             # Check if it's an architecture split we don't want
             abi_match = re_abi.search(lower_name)
             if abi_match:
                 abi = abi_match.group(1).lower()
                 if abi != target_abi:
                     keep = False
-                    
+
             if keep:
-                z_out.writestr(item, z_in.read(item.filename))
+                z_out.writestr(info, z_in.read(info))
 
 
 def _extract_base_apk(apkm: Path, pkg_name: str, dest_dir: Path) -> Path:
@@ -307,17 +379,17 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
 
     pr(f"Building '{entry.table}'")
 
-    captured_out = []
-    
+    captured_out: list[str] = []
+
     def hooked_run(*args, **kwargs):
         kwargs['capture_output'] = True
         kwargs['text'] = True
         res = subprocess.run(*args, **kwargs)
         if res.stdout:
-            print(res.stdout)
+            pr(res.stdout.rstrip())
             captured_out.append(res.stdout)
         if res.stderr:
-            print(res.stderr, file=sys.stderr)
+            epr(res.stderr.rstrip())
             captured_out.append(res.stderr)
         return res
         
@@ -332,58 +404,82 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     return apk_output
 
 
-def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, patcher: PatcherCLI, strict_sigcheck: bool) -> str | None:
-    if entry.table in _failed_signatures:
+def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, patcher: PatcherCLI, strict_sigcheck: bool, state: BuildState, aliases: dict[str, str] | None = None) -> BuildResult | None:
+    """Build a single (entry, arch) tuple.
+
+    Returns a ``BuildResult`` dict on completion (success or failure) or
+    ``None`` if the entry was skipped due to a prior signature mismatch
+    for the same app (in which case the result has already been recorded
+    by the caller's first attempt).
+    """
+    import time
+    from datetime import datetime, timezone
+
+    started = time.monotonic()
+    started_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    if state.has_failed_signature(entry.table):
         epr(f"Skipped '{label}' due to previous signature mismatch")
         return None
 
     try:
         scrapers = {src: _make_scraper(src, net) for src in entry.dl_urls}
-        pkg_name, dl_from, failed_sources = _find_pkg_name(entry, scrapers)
+        pkg_name, dl_from, failed_sources = _find_pkg_name(entry, scrapers, aliases=aliases)
         list_patches = patcher.list_patches(pkg_name, experimental=entry.version == "latest")
-        _patches_info[entry.table] = _parse_patch_names(list_patches)
+        state.set_patches_info(entry.table, _parse_patch_names(list_patches))
         version, force = _resolve_version(entry, patcher, list_patches, pkg_name, dl_from, scrapers)
 
         try:
             dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources)
         except BuilderError as exc:
             if entry.version in ("auto", "latest"):
-                fallback_version = None
-                dl_result_fallback = None
+                fallback_version: str | None = None
+                dl_result_fallback: DownloadResult | None = None
                 fallback_order = [s for s in ["uptodown", "apkpure", "github", "apkmirror"] if s in entry.dl_urls]
 
                 for src in fallback_order:
-                    if src in failed_sources: continue
+                    if src in failed_sources:
+                        continue
                     try:
                         versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
-                        if not versions: continue
+                        if not versions:
+                            continue
                         lower_candidates = _get_versions_below(versions, version)
                         for candidate_ver in lower_candidates:
                             wpr(f"Target '{version}' unavailable. Trying lower version '{candidate_ver}' from '{src}'...")
                             try:
                                 dl_result_fallback = _download_apk(entry, candidate_ver, arch, pkg_name, scrapers, src, failed_sources)
                                 fallback_version = candidate_ver
+                                dl_from = src
                                 break
-                            except BuilderError: continue
-                        if dl_result_fallback: break
-                    except Exception:
+                            except BuilderError:
+                                continue
+                        if dl_result_fallback:
+                            break
+                    except (NetworkError, ScraperError, BuilderError) as fexc:
+                        epr(f"Fallback metadata fetch failed for '{src}': {fexc}")
                         failed_sources.add(src)
 
                 if not dl_result_fallback:
                     for src in fallback_order:
-                        if src in failed_sources: continue
+                        if src in failed_sources:
+                            continue
                         try:
                             versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
-                            if not versions: continue
+                            if not versions:
+                                continue
                             highest_ver = get_highest_ver(versions)
                             if highest_ver:
                                 wpr(f"No lower versions available. Falling back to highest available '{highest_ver}' from '{src}'...")
                                 try:
                                     dl_result_fallback = _download_apk(entry, highest_ver, arch, pkg_name, scrapers, src, failed_sources)
                                     fallback_version = highest_ver
+                                    dl_from = src
                                     break
-                                except BuilderError: continue
-                        except Exception:
+                                except BuilderError:
+                                    continue
+                        except (NetworkError, ScraperError, BuilderError) as fexc:
+                            epr(f"Fallback metadata fetch failed for '{src}': {fexc}")
                             failed_sources.add(src)
 
                 if fallback_version and dl_result_fallback:
@@ -397,23 +493,18 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 raise exc
 
         _verify_sig(dl_result, pkg_name, patcher, label, entry.skip_sigcheck, strict_sigcheck)
-        
-        # ----------------------------------------------------
-        # NEW: Bundle Optimization logic (Strip bloat splits)
-        # ----------------------------------------------------
+
+        # Bundle Optimization logic (Strip bloat splits)
         if dl_result.is_bundle:
             optimized_bundle = TEMP_DIR / f"lean_{dl_result.path.name}"
             _optimize_bundle(dl_result.path, optimized_bundle, arch)
-            
-            # Point the dl_result to the new lightweight bundle for the patcher
             dl_result = DownloadResult(path=optimized_bundle, is_bundle=True)
-            
-        
+
         # Dynamic Exclude Loop (Max 5 retries to prevent endless loops)
-        excluded_patches = []
+        excluded_patches: list[str] = []
         max_retries = 5
-        apk_output = None
-        
+        apk_output: Path | None = None
+
         for attempt in range(max_retries):
             try:
                 apk_output = _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches)
@@ -421,37 +512,95 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             except (PatcherError, BuilderError) as exc:
                 clean_exc = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
                 match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
-                
+
                 if match:
                     failed_patch = match.group(1).strip()
                     if failed_patch in excluded_patches:
-                        raise BuilderError(f"Patch '{failed_patch}' failed again after being excluded.")
-                        
+                        raise BuilderError(f"Patch '{failed_patch}' failed again after being excluded.") from exc
+
                     wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
                     excluded_patches.append(failed_patch)
                 else:
-                    raise  
+                    raise
         else:
             raise BuilderError(f"Failed to patch '{label}' after {max_retries} attempts.")
 
+        assert apk_output is not None  # narrowed by the for/else above
         pr(f"Built {label}: '{apk_output}'")
         github_asset_name = re.sub(r"\.+", ".", re.sub(r"[^a-zA-Z0-9@+\-_.]", ".", apk_output.name))
         ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
-        
+
         excluded_str = ", ".join(excluded_patches) if excluded_patches else ""
-        return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "excluded_patches": excluded_patches, "success": True, "log": f"- 🟢 » {label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")}
+        finished_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        duration = time.monotonic() - started
+        try:
+            stock_apk_size = apk_output.stat().st_size
+        except OSError:
+            stock_apk_size = 0
+
+        log_line = "- 🟢 » " + f"{label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")
+        return BuildResult(
+            app=entry.table,
+            label=label,
+            version=version,
+            apk=apk_output.name,
+            excluded_patches=excluded_patches,
+            success=True,
+            log=log_line,
+            started_at=started_iso,
+            finished_at=finished_iso,
+            duration_s=round(duration, 2),
+            source=dl_from,
+            stock_apk_size=stock_apk_size,
+        )
     except (BuilderError, PatcherError, ScraperError, NetworkError, SignatureError) as exc:
         if isinstance(exc, SignatureError):
-            _failed_signatures.add(entry.table)
+            state.add_failed_signature(entry.table)
 
         if not is_interrupted():
             epr(f"Building '{label}' failed! {exc}")
-        return {"app": entry.table, "label": label, "success": False, "error": str(exc), "log": None}
+        finished_iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return BuildResult(
+            app=entry.table,
+            label=label,
+            version=None,
+            success=False,
+            error=str(exc),
+            log=None,
+            started_at=started_iso,
+            finished_at=finished_iso,
+            duration_s=round(time.monotonic() - started, 2),
+        )
 
 
-def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: NetworkManager, ks_path: Path | None, strict_sigcheck: bool) -> list[Future[dict | None]]:
-    futures: list[Future[dict | None]] = []
-    cli_cache: dict[tuple[str, str], Path] = {}
+def _make_failure_result(entry: AppEntry, error: str) -> BuildResult:
+    """Build a failure ``BuildResult`` for entries that couldn't be submitted."""
+    from datetime import datetime, timezone
+    iso = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    label = entry.app_name if entry.arch == "all" else f"{entry.app_name} ({entry.arch})"
+    return BuildResult(
+        app=entry.table,
+        label=label,
+        version=None,
+        success=False,
+        error=error,
+        log=None,
+        started_at=iso,
+        finished_at=iso,
+        duration_s=0.0,
+    )
+
+
+def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: NetworkManager, ks_path: Path | None, strict_sigcheck: bool, state: BuildState, aliases: dict[str, str] | None = None) -> list[Future[BuildResult | None]]:
+    """Submit every buildable entry to the pool and return the futures.
+
+    Always emits a failure ``BuildResult`` for entries that couldn't be
+    submitted (missing CLI jar, missing patch bundle, missing config) so
+    that the final ``build.json`` reflects every entry - not just the
+    ones that made it into the pool.
+    """
+    futures: list[Future[BuildResult | None]] = []
+    cli_cache: dict[tuple[str, str], Path | None] = {}
     for e in entries:
         if not e.dl_urls:
             continue
@@ -462,37 +611,46 @@ def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: Netw
                 cli_cache[key] = fetch_cli(e.cli_source, e.cli_version, net)
             except Exception as exc:
                 epr(f"Could not fetch CLI '{e.cli_source}': {exc}")
+                cli_cache[key] = None
 
     all_patch_srcs = {(src, spec["version"]) for e in entries if e.dl_urls for src, spec in e.patches.items()}
-    mpp_map: dict[tuple[str, str], Path] = {}
+    mpp_map: dict[tuple[str, str], Path | None] = {}
     for src, ver in all_patch_srcs:
         try:
             mpp_map[(src, ver)] = fetch_mpp(src, ver, net)
         except Exception as exc:
             epr(f"Could not fetch patches from '{src}': {exc}")
+            mpp_map[(src, ver)] = None
 
     for entry in entries:
         if not entry.dl_urls:
             epr(f"No 'dlurl' option was set for '{entry.table}'")
+            futures.append(pool.submit(_make_failure_result, entry, "No 'dlurl' option was set"))
             continue
         if not entry.patches:
             epr(f"No 'patches' table defined for '{entry.table}'")
+            futures.append(pool.submit(_make_failure_result, entry, "No 'patches' table defined"))
             continue
 
         cli_key = (entry.cli_source, entry.cli_version)
-        if cli_key not in cli_cache:
+        cli_path = cli_cache.get(cli_key)
+        if not cli_path:
+            msg = f"Could not fetch CLI '{entry.cli_source}'"
+            futures.append(pool.submit(_make_failure_result, entry, msg))
             continue
 
-        app_mpp_map = {(src, spec["version"]): mpp_map[(src, spec["version"])] for src, spec in entry.patches.items() if (src, spec["version"]) in mpp_map}
+        app_mpp_map = {(src, spec["version"]): mpp_map[(src, spec["version"])] for src, spec in entry.patches.items() if (src, spec["version"]) in mpp_map and mpp_map[(src, spec["version"])] is not None}
         if not app_mpp_map:
-            epr(f"No patch files available for '{entry.table}'")
+            msg = f"No patch files available for '{entry.table}'"
+            epr(msg)
+            futures.append(pool.submit(_make_failure_result, entry, msg))
             continue
 
-        patcher = PatcherCLI(cli_cache[cli_key], app_mpp_map, APKSIGNER, ks_path=ks_path)
+        patcher = PatcherCLI(cli_path, app_mpp_map, APKSIGNER, ks_path=ks_path)
         arches = ("arm64-v8a", "armeabi-v7a") if entry.arch == "both" else (entry.arch,)
         for arch in arches:
             label = entry.app_name if entry.arch == "all" else f"{entry.app_name} ({arch})"
-            futures.append(pool.submit(_build_single, entry, arch, label, net, patcher, strict_sigcheck))
+            futures.append(pool.submit(_build_single, entry, arch, label, net, patcher, strict_sigcheck, state, aliases))
     return futures
 
 
@@ -501,6 +659,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
         epr("No entries to build")
         return False
 
+    state = BuildState(patches_info=load_patches_info_cache())
     ks_path: Path | None = None
     if ks_b64 := os.getenv("KEYSTORE_BASE64"):
         with tempfile.NamedTemporaryFile(dir=TEMP_DIR, suffix=".keystore", delete=False) as tf:
@@ -509,7 +668,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
 
     try:
         with ThreadPoolExecutor(max_workers=config.parallel_jobs) as pool:
-            futures = _submit_entries(entries, pool, net, ks_path, config.strict_sigcheck)
+            futures = _submit_entries(entries, pool, net, ks_path, config.strict_sigcheck, state, config.aliases)
     finally:
         if ks_path:
             ks_path.unlink(missing_ok=True)
@@ -518,19 +677,32 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
         shutil.rmtree(tmp, ignore_errors=True)
 
     log_lines: list[str] = []
-    report_data = {"success": [], "failed": [], "excluded_patches": {}}
+    report_data: dict[str, list] = {"success": [], "failed": [], "excluded_patches": {}}
     for fut in as_completed(futures):
         if r := fut.result():
-            if r["success"]:
+            if r.get("success"):
                 log_lines.append(r["log"])
-                report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"]})
-                if r["excluded_patches"]:
+                report_data["success"].append({
+                    "app": r["app"],
+                    "label": r["label"],
+                    "version": r.get("version"),
+                    "apk": r.get("apk"),
+                    "source": r.get("source"),
+                    "duration_s": r.get("duration_s"),
+                    "stock_apk_size": r.get("stock_apk_size"),
+                })
+                if r.get("excluded_patches"):
                     report_data["excluded_patches"][r["label"]] = r["excluded_patches"]
             else:
-                report_data["failed"].append({"app": r["app"], "label": r["label"], "error": r["error"]})
+                report_data["failed"].append({
+                    "app": r["app"],
+                    "label": r["label"],
+                    "error": r.get("error", ""),
+                    "duration_s": r.get("duration_s"),
+                })
 
     Path("build.json").write_text(json.dumps(report_data, indent=2))
-    Path("patches_info.json").write_text(json.dumps(_patches_info, indent=2))
+    Path("patches_info.json").write_text(json.dumps(state.snapshot_patches_info(), indent=2))
 
     if not log_lines:
         epr("All builds failed")
@@ -543,7 +715,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
     for m in block_re.finditer(raw):
         (cli_blocks if m.group(1) == "CLI" else patch_blocks).append(m.group())
     changelogs = "".join(cli_blocks) + "".join(patch_blocks)
-    microg_line = "▶️ » Install [MicroG-RE](https://github.com/MorpheApp/MicroG-RE/releases) to enable Google account sign-in for supported apps\n"
+    microg_line = "\u25b6\ufe0f \u00bb Install [MicroG-RE](https://github.com/MorpheApp/MicroG-RE/releases) to enable Google account sign-in for supported apps\n"
     Path("build.md").write_text("\n".join([*log_lines, "", microg_line, changelogs]), encoding="utf-8")
     pr("Done")
     return True

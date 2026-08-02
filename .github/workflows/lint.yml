@@ -5,35 +5,56 @@ on:
     paths:
       - 'config.toml'
       - 'src/**'
+      - 'main.py'
+      - 'pyproject.toml'
+      - '.github/workflows/lint.yml'
   pull_request:
     paths:
       - 'config.toml'
       - 'src/**'
+      - 'main.py'
+      - 'pyproject.toml'
+      - '.github/workflows/lint.yml'
 
 permissions:
   contents: write
+
+# Cancel any superseded run on the same ref to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
         with:
           python-version: "3.13"
           enable-cache: true
           quiet: true
 
-      - name: Install dependencies
-        run: uv sync --frozen
+      - name: Install dependencies (including dev extras)
+        run: uv sync --frozen --extra dev
 
       - name: Validate Config
         run: uv run python -c "from src.core.config import load_toml, parse_config, parse_app_entries, CONFIG_PATH; data = load_toml(CONFIG_PATH); parse_app_entries(data, parse_config(data))"
+
+      - name: Ruff check
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Mypy type check
+        run: uv run mypy || true  # warn-only until all violations are fixed
 
       - name: Sync README with config.toml
         if: github.event_name == 'push'

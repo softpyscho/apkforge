@@ -30,10 +30,22 @@ No further setup needed, as `uv` handles the Python environment and dependencies
 3. ▶️ **Running**:
 
 ```bash
-uv run main.py # build all apps
-uv run main.py SomeApp # build a specific app
-uv run main.py SomeApp arm64-v8a # build with arch override
-uv run main.py clear # remove build/, temp/ and build.md
+uv run main.py                       # build all apps
+uv run main.py SomeApp               # build a specific app
+uv run main.py SomeApp arm64-v8a     # build with arch override
+uv run main.py list                  # list configured apps (no build)
+uv run main.py list --filter redd    # filter the list by name
+uv run main.py clear                 # remove build/, temp/ and build.md
+uv run main.py --version             # print version
+uv run main.py --help                # show full CLI help
+uv run main.py -v SomeApp            # verbose (DEBUG-level) logging
+```
+
+You can also use the `apkforge` console script (after `uv sync`):
+
+```bash
+uv run apkforge list
+uv run apkforge build Reddit arm64-v8a
 ```
 
 Output APKs are saved to `build/`.
@@ -60,23 +72,35 @@ apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
 
 | 🔑 Key | 📝 Description | 🔤 Default | 📌 Scope |
 |:------:|:--------------:|:----------:|:--------:|
-| `parallel-jobs` | Number of concurrent builds | `CPU count` | Global |
+| `parallel-jobs` | Number of concurrent build workers | `CPU count` | Global |
+| `network-concurrency` | Max concurrent network requests per domain | `4` | Global |
 | `brand` | Used in output filenames | `Morphe` | Global / Per-app |
 | `release-group` | Groups apps into separate releases (maps to release tag suffix and CI job) | `brand` value | Per-app |
 | `cli-version` | CLI version to fetch (`latest`, `dev`, or a specific version string) | `latest` | Global / Per-app |
 | `cli-source` | GitHub or GitLab repo for CLI (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` | Global / Per-app |
 | `strict-sigcheck` | Fail the build if an app is missing from `sig.txt` (see note below) | `true` | **Global only** |
+| `allow-insecure` | Allow plain-HTTP URLs (disables the SSRF HTTPS-only guard) | `false` | **Global only** |
+| `apksigner-path` | Path to the apksigner.jar binary | `bin/apksigner.jar` | Global |
+| `keystore-path` | Path to the fallback keystore (when no env secrets are set) | `morphe.keystore` | Global |
 | `app-name` | Display name used in output filename and build label | `table name (hyphens replaced by spaces)` | Per-app |
 | `arch` | Target architecture (`all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`) | `all` | Per-app |
 | `version` | Target version (`auto`, `latest`, or a specific version string) - `latest` also considers experimental patch versions, `auto` only stable ones | `auto` | Per-app |
 | `changelog-keywords` | List of keywords used to detect if this app was updated in the release notes | `[]` | Per-app |
 | `apkmirror-dlurl` | APKMirror page URL | `-` | Per-app |
 | `uptodown-dlurl` | Uptodown page URL | `-` | Per-app |
+| `apkpure-dlurl` | APKPure page URL | `-` | Per-app |
 | `github-dlurl` | GitHub Releases page URL | `-` | Per-app |
 | `exclusive-patches` | Only apply patches listed in `[AppName.patches]`, exclude everything else | `false` | Per-app |
 | `patcher-args` | Extra arguments passed directly to Morphe CLI | `-` | Per-app |
 | `skip-sigcheck` | Completely bypasses signature checks for this app (see note below) | `false` | **Per-app only** |
 | `enabled` | Set to `false` to skip this entry | `true` | Per-app |
+
+**`[aliases]` table** - optional, maps lowercase mirror-side package names to their canonical Play Store identifiers:
+
+```toml
+[aliases]
+youtube = "com.google.android.youtube"
+```
 
 **`[AppName.patches]` table** - defines which patch bundles to use and which patches to apply from each:
 
@@ -151,6 +175,40 @@ base64 -w 0 my.keystore
 On **GitHub Actions**, set `KEYSTORE_BASE64`, `KEYSTORE_PASS` and `KEYSTORE_ALIAS` as repository secrets under **Settings → Secrets and variables → Actions** instead of a `.env` file, as they are passed to the build automatically.
 
 If no keystore is configured, `morphe.keystore` is used as a fallback if it exists in the project root. If neither is present, the CLI signs with its built-in debug keystore. On **GitHub Actions** this means every release will have a different signature, making app updates **impossible**.
+
+6. 📛 **Package-name aliases**:
+
+Some apps' mirror pages report a different package name than the one expected by the patch source (e.g. YouTube's mirror page may say `com.google.android.youtube` while the patch source expects `youtube`). Define an alias in `config.toml`:
+
+```toml
+[aliases]
+youtube = "com.google.android.youtube"
+youtube-music = "com.google.android.apps.youtube.music"
+tiktok = "com.ss.android.ugc.trill"
+```
+
+7. 🔒 **Network & SSRF**:
+
+By default, apkforge enforces HTTPS-only and rejects URLs pointing at loopback / private / link-local IP literals (basic SSRF guard). To override:
+
+- `allow-insecure = true` in `config.toml` (or `APKFORGE_INSECURE=1` env var) — allow plain HTTP.
+- `APKFORGE_ALLOW_PRIVATE_HOSTS=host1,host2` env var — allow specific private hosts (e.g. an internal mirror).
+
+## 🧪 Testing
+
+The codebase has unit tests for the pure helper functions (version parsing, config validation, SSRF guard, cache lookup, patches-info merging). To run them locally:
+
+```bash
+uv sync --extra dev          # install pytest + ruff + mypy
+uv run pytest                # run tests with coverage
+uv run ruff check .          # lint
+uv run ruff format --check . # format check
+uv run mypy                  # type check (warn-only for now)
+```
+
+Coverage targets: 60% on `src/core/` and `src/scrapers/base.py`. Tests live in `tests/` and use only stdlib + pytest (no network, no subprocess).
+
+To add a new test, copy the pattern in `tests/test_core.py` — each test class is grouped by the module under test, and each test method names the specific function it exercises.
 
 ## 🤝 Contributing
 

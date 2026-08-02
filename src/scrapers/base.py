@@ -17,14 +17,14 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from src.core.exceptions import ScraperError
 from src.core.network import NetworkManager
 
 
 def _parse_html(html: str) -> BeautifulSoup:
     return BeautifulSoup(html, "html.parser")
 
-class ScraperError(Exception):
-    """Raised for scraper-layer failures: DOM parsing, regex mismatches, missing assets"""
+# ScraperError is re-exported from src.core.exceptions for backwards compat.
 
 @dataclass(slots=True, frozen=True)
 class AppMetadata:
