@@ -179,55 +179,27 @@ def _app_badge(entry) -> str:
 def _obtainium_link(entry) -> str:
     """Generate an Obtainium deep link for this specific app."""
     name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
+    obtainium_name = f"{name} {entry.brand.title()}"
     
     base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
-    apk_filter = f"^{base_name}-.*-{entry.arch}\\.apk$"
-    version_extractor = f"^{base_name}-v(.*)-{entry.arch}\\.apk$"
+    apk_filter = f"^{base_name}-(v\\w*\\d|\\d|vbuild).*\\.apk$"
     
     settings = {
-        "includePrereleases": False,
-        "fallbackToOlderReleases": True,
-        "filterReleaseTitlesByRegEx": "",
-        "filterReleaseNotesByRegEx": "",
-        "verifyLatestTag": False,
-        "sortMethodChoice": "date",
-        "useLatestAssetDateAsReleaseDate": False,
-        "releaseTitleAsVersion": False,
-        "trackOnly": False,
-        "versionExtractionRegEx": version_extractor,
-        "matchGroupToUse": "1",
-        "versionDetection": False,
-        "releaseDateAsVersion": False,
-        "useVersionCodeAsOSVersion": False,
-        "apkFilterRegEx": apk_filter,
-        "invertAPKFilter": False,
-        "autoApkFilterByArch": True,
-        "appName": name,
-        "appAuthor": "",
-        "shizukuPretendToBeGooglePlay": False,
-        "allowInsecure": False,
-        "exemptFromBackgroundUpdates": False,
-        "skipUpdateNotifications": False,
-        "about": "",
-        "refreshBeforeDownload": False,
-        "includeZips": False,
-        "zippedApkFilterRegEx": "",
-        "dontSortReleasesList": False,
-        "github-creds": ""
+        "apkFilterRegEx": apk_filter
     }
     
     payload = {
         "id": entry.pkg_name or f"com.{entry.table.lower()}.app",
-        "url": "https://github.com/softpsycho/apkforge",
+        "name": obtainium_name,
         "author": "softpsycho",
-        "name": name,
-        "preferredApkIndex": 0,
-        "additionalSettings": json.dumps(settings),
-        "overrideSource": "GitHub"
+        "url": "https://github.com/softpsycho/apkforge",
+        "additionalSettings": json.dumps(settings, separators=(',', ':'))
     }
     
-    encoded_payload = urllib.parse.quote(json.dumps(payload), safe="")
-    deep_link = f"https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/{encoded_payload}"
+    raw_uri = f"obtainium://app/{json.dumps(payload, separators=(',', ':'))}"
+    encoded_uri = urllib.parse.quote(raw_uri, safe="")
+    
+    deep_link = f"https://apps.obtainium.imranr.dev/redirect?r={encoded_uri}"
     badge_img = f'![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)'
     return f"[{badge_img}]({deep_link})"
 
