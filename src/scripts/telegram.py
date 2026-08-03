@@ -1,9 +1,9 @@
 # ---------------------------------------------------------
-# Copyright (C) 2026 softpsycho
+# Copyright (C) 2026 softpyscho
 # 
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.
-# Canonical source: https://github.com/softpsycho/apkforge
+# Canonical source: https://github.com/softpyscho/apkforge
 #
 # Licensed under the GNU GPLv3. You may modify this file,
 # but you MUST keep this original copyright notice intact

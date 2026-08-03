@@ -3,7 +3,7 @@
 #
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.
-# Canonical source: https://github.com/softpsycho/apkforge
+# Canonical source: https://github.com/softpyscho/apkforge
 #
 # Licensed under the GNU GPLv3.
 # ---------------------------------------------------------

@@ -1,9 +1,9 @@
 <div align="center">
 <a href="#-features"><img src="https://readme-typing-svg.demolab.com/?font=Google+Sans&size=25&pause=1000&color=4500FF&center=true&vCenter=true&random=false&width=550&lines=%F0%9F%93%A6+Pre-built+APKs+from+various+patch+sources"></a>
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/softpsycho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpsycho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
 <br>
-[![Downloads](https://img.shields.io/github/downloads/softpsycho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpsycho/apkforge#-list-of-apps-in-this-repository)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpsycho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpsycho/apkforge#-list-of-apps-in-this-repository)
+[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)
 <br>
 
 Here you will find a step-by-step technical guide on how to set up your environment, run the patching script, customize the build configuration, and contribute to the project's development.
@@ -21,7 +21,7 @@ Here you will find a step-by-step technical guide on how to set up your environm
 2. 📥 **Installation**:
 
 ```bash
-git clone --depth 1 https://github.com/softpsycho/apkforge.git
+git clone --depth 1 https://github.com/softpyscho/apkforge.git
 cd apkforge
 ```
 
@@ -156,11 +156,11 @@ If no keystore is configured, `morphe.keystore` is used as a fallback if it exis
 
 1. 🐞 **Bug reports**:
 
-For bugs in the **build script itself**, use the [Script Bug Report](https://github.com/softpsycho/apkforge/issues/new?template=script.yml) template. For bugs in **patched applications**, use the [Build Result Bug Report](https://github.com/softpsycho/apkforge/issues/new?template=build.yml) template.
+For bugs in the **build script itself**, use the [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml) template. For bugs in **patched applications**, use the [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml) template.
 
 2. **💡 Suggestions**:
 
-Feature ideas belong in the [Discussions](https://github.com/softpsycho/apkforge/discussions) tab, as this keeps the issue tracker focused on bugs.
+Feature ideas belong in the [Discussions](https://github.com/softpyscho/apkforge/discussions) tab, as this keeps the issue tracker focused on bugs.
 
 3. **🛠️ Pull Requests**:
 
@@ -168,4 +168,4 @@ Pull requests are welcome. AI-assisted contributions are accepted, but all chang
 
 ---
 
-<p align="center"><i>Maintained with ❤️ by <a href="https://github.com/softpsycho">softpsycho</a></i></p>
+<p align="center"><i>Maintained with ❤️ by <a href="https://github.com/softpyscho">softpyscho</a></i></p>

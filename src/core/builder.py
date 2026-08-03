@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# Copyright (C) 2026 softpsycho
+# Copyright (C) 2026 softpyscho
 # 
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.

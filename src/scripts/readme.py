@@ -1,9 +1,9 @@
 # ---------------------------------------------------------
-# Copyright (C) 2026 softpsycho
+# Copyright (C) 2026 softpyscho
 # 
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.
-# Canonical source: https://github.com/softpsycho/apkforge
+# Canonical source: https://github.com/softpyscho/apkforge
 #
 # Licensed under the GNU GPLv3. You may modify this file,
 # but you MUST keep this original copyright notice intact
@@ -191,8 +191,8 @@ def _obtainium_link(entry) -> str:
     payload = {
         "id": entry.pkg_name or f"com.{entry.table.lower()}.app",
         "name": obtainium_name,
-        "author": "softpsycho",
-        "url": "https://github.com/softpsycho/apkforge",
+        "author": "softpyscho",
+        "url": "https://github.com/softpyscho/apkforge",
         "additionalSettings": json.dumps(settings, separators=(',', ':'))
     }
     

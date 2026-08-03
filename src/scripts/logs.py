@@ -1,9 +1,9 @@
 # ---------------------------------------------------------
-# Copyright (C) 2026 softpsycho
+# Copyright (C) 2026 softpyscho
 # 
 # DO NOT REMOVE OR ALTER THIS COPYRIGHT HEADER.
 # This file is part of apkforge.
-# Canonical source: https://github.com/softpsycho/apkforge
+# Canonical source: https://github.com/softpyscho/apkforge
 #
 # Licensed under the GNU GPLv3. You may modify this file,
 # but you MUST keep this original copyright notice intact
@@ -56,7 +56,7 @@ def combine_logs(logs_dir: Path | str) -> None:
         if not microg_line:
             microg_line = m_line
 
-    repo = os.getenv('GITHUB_REPOSITORY', 'softpsycho/apkforge')
+    repo = os.getenv('GITHUB_REPOSITORY', 'softpyscho/apkforge')
     
     print("## 🚀 Built Applications\n")
     print("| App | Version | Architecture | Download & Patches |")

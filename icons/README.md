@@ -1,6 +1,6 @@
 ## Icons & Assets Credits
 
 The base designs for the icons and headers in this directory were originally created by **[kazimmt](https://github.com/kazimmt)**.
-These assets have been subsequently modified, recolored, and adapted by **[softpsycho](https://github.com/softpsycho)** for the apkforge project.
+These assets have been subsequently modified, recolored, and adapted by **[softpyscho](https://github.com/softpyscho)** for the apkforge project.
 
 In accordance with the original work, all modified assets in this directory are distributed under the **GNU GPLv3** license.
