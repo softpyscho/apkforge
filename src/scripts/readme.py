@@ -197,7 +197,7 @@ def _obtainium_link(entry) -> str:
     }
     
     raw_uri = f"obtainium://app/{json.dumps(payload, separators=(',', ':'))}"
-    encoded_uri = urllib.parse.quote(raw_uri, safe="")
+    encoded_uri = urllib.parse.quote(raw_uri, safe="()*")
     
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r={encoded_uri}"
     badge_img = f'![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)'
