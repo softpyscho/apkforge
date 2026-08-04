@@ -140,11 +140,11 @@ github-dlurl = "https://github.com/softpyscho/apkforge/releases/tag/com.oasisfen
 pkg-name = "com.paget96.batteryguru"
 badge-color = "4CAF50"
 badge-icon = "battery_charging_full"
-version = "auto"
+version = "latest"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/paget96/battery-guru/"
 uptodown-dlurl = "https://battery-guru.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/battery-guru-battery-health/com.paget96.batteryguru"
 
 [Battery-Guru.patches]
-"github:arandomhooman/hoomans-morphe-patches" = []
+"github:arandomhooman/hoomans-morphe-patches" = { version = "dev" }
