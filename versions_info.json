@@ -31,16 +31,16 @@
       "apk": "warp-morphe-v6.38.8-arm64-v8a.apk"
     },
     {
+      "app": "Battery-Guru",
+      "label": "Battery Guru (arm64-v8a)",
+      "version": "2.5.0.2",
+      "apk": "battery-guru-morphe-v2.5.0.2-arm64-v8a.apk"
+    },
+    {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.7.1-release.0",
       "apk": "twitter-morphe-v12.7.1-release.0-arm64-v8a.apk"
-    },
-    {
-      "app": "Cashew",
-      "label": "Cashew (arm64-v8a)",
-      "version": "6.6.11",
-      "apk": "cashew-morphe-v6.6.11-arm64-v8a.apk"
     },
     {
       "app": "Reddit",
