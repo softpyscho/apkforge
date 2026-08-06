@@ -1,22 +1,10 @@
 {
   "success": [
     {
-      "app": "Instagram",
-      "label": "Instagram (arm64-v8a)",
-      "version": "439.0.0.37.89",
-      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk"
-    },
-    {
       "app": "Xodo",
       "label": "Xodo (arm64-v8a)",
       "version": "10.15.0",
       "apk": "xodo-morphe-v10.15.0-arm64-v8a.apk"
-    },
-    {
-      "app": "Amazon-Prime-Video",
-      "label": "Amazon Prime Video (arm64-v8a)",
-      "version": "3.0.452.1047",
-      "apk": "amazon-prime-video-morphe-v3.0.452.1047-arm64-v8a.apk"
     },
     {
       "app": "Greenify",
@@ -25,22 +13,10 @@
       "apk": "greenify-morphe-v5.1.1-arm64-v8a.apk"
     },
     {
-      "app": "WARP",
-      "label": "WARP (arm64-v8a)",
-      "version": "6.38.8",
-      "apk": "warp-morphe-v6.38.8-arm64-v8a.apk"
-    },
-    {
-      "app": "Battery-Guru",
-      "label": "Battery Guru (arm64-v8a)",
-      "version": "2.5.0.2",
-      "apk": "battery-guru-morphe-v2.5.0.2-arm64-v8a.apk"
-    },
-    {
-      "app": "Twitter",
-      "label": "Twitter (arm64-v8a)",
-      "version": "12.7.1-release.0",
-      "apk": "twitter-morphe-v12.7.1-release.0-arm64-v8a.apk"
+      "app": "Instagram",
+      "label": "Instagram (arm64-v8a)",
+      "version": "439.0.0.37.89",
+      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk"
     },
     {
       "app": "Reddit",
@@ -49,10 +25,28 @@
       "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk"
     },
     {
-      "app": "Splitwise",
-      "label": "Splitwise (arm64-v8a)",
-      "version": "26.7.2",
-      "apk": "splitwise-morphe-v26.7.2-arm64-v8a.apk"
+      "app": "Twitter",
+      "label": "Twitter (arm64-v8a)",
+      "version": "12.7.1-release.0",
+      "apk": "twitter-morphe-v12.7.1-release.0-arm64-v8a.apk"
+    },
+    {
+      "app": "Amazon-Prime-Video",
+      "label": "Amazon Prime Video (arm64-v8a)",
+      "version": "3.0.452.1047",
+      "apk": "amazon-prime-video-morphe-v3.0.452.1047-arm64-v8a.apk"
+    },
+    {
+      "app": "TickTick",
+      "label": "TickTick (arm64-v8a)",
+      "version": "8.0.6.1",
+      "apk": "ticktick-morphe-v8.0.6.1-arm64-v8a.apk"
+    },
+    {
+      "app": "WARP",
+      "label": "WARP (arm64-v8a)",
+      "version": "6.38.8",
+      "apk": "warp-morphe-v6.38.8-arm64-v8a.apk"
     },
     {
       "app": "Truecaller",
@@ -61,10 +55,16 @@
       "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk"
     },
     {
-      "app": "TickTick",
-      "label": "TickTick (arm64-v8a)",
-      "version": "8.0.6.1",
-      "apk": "ticktick-morphe-v8.0.6.1-arm64-v8a.apk"
+      "app": "Splitwise",
+      "label": "Splitwise (arm64-v8a)",
+      "version": "26.7.2",
+      "apk": "splitwise-morphe-v26.7.2-arm64-v8a.apk"
+    },
+    {
+      "app": "Battery-Guru",
+      "label": "Battery Guru (arm64-v8a)",
+      "version": "2.5.0.1",
+      "apk": "battery-guru-morphe-v2.5.0.1-arm64-v8a.apk"
     }
   ]
 }
