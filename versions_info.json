@@ -31,6 +31,12 @@
       "apk": "warp-morphe-v6.38.8-arm64-v8a.apk"
     },
     {
+      "app": "Battery-Guru",
+      "label": "Battery Guru (arm64-v8a)",
+      "version": "2.5.0.2",
+      "apk": "battery-guru-morphe-v2.5.0.2-arm64-v8a.apk"
+    },
+    {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.7.1-release.0",
