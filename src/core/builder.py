@@ -9,6 +9,8 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
+import io
+import struct
 import base64
 import os
 import re
@@ -35,6 +37,87 @@ try:
         _patches_info = json.loads(Path("patches_info.json").read_text(encoding="utf-8"))
 except Exception:
     pass
+
+
+def parse_axml_strings(axml_data: bytes) -> list[str]:
+    """Parse string pool from binary AndroidManifest.xml (AXML)."""
+    strings = []
+    try:
+        if len(axml_data) < 32:
+            return strings
+        idx = axml_data.find(b"\x01\x00\x1c\x00")
+        if idx == -1:
+            return strings
+
+        string_count = struct.unpack("<I", axml_data[idx + 8 : idx + 12])[0]
+        flags = struct.unpack("<I", axml_data[idx + 16 : idx + 20])[0]
+        strings_start = idx + struct.unpack("<I", axml_data[idx + 20 : idx + 24])[0]
+        is_utf8 = (flags & (1 << 8)) != 0
+
+        offsets = []
+        off_pos = idx + 28
+        for _ in range(min(string_count, 5000)):
+            offsets.append(struct.unpack("<I", axml_data[off_pos : off_pos + 4])[0])
+            off_pos += 4
+
+        for off in offsets:
+            pos = strings_start + off
+            if is_utf8:
+                if pos >= len(axml_data):
+                    continue
+                u8len = axml_data[pos]
+                if u8len & 0x80:
+                    pos += 2
+                else:
+                    pos += 1
+                end = axml_data.find(b"\x00", pos)
+                if end != -1:
+                    strings.append(axml_data[pos:end].decode("utf-8", errors="ignore"))
+            else:
+                if pos + 2 > len(axml_data):
+                    continue
+                u16len = struct.unpack("<H", axml_data[pos : pos + 2])[0]
+                pos += 2
+                strings.append(axml_data[pos : pos + u16len * 2].decode("utf-16le", errors="ignore"))
+    except Exception:
+        pass
+    return strings
+
+
+def extract_apk_version(apk_path: Path) -> str | None:
+    """Extract actual versionName string from AndroidManifest.xml inside APK or bundle."""
+    ver_regex = re.compile(r"^\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?$")
+
+    def _find_ver(axml: bytes) -> str | None:
+        strs = parse_axml_strings(axml)
+        for s in strs:
+            s_clean = s.strip()
+            if ver_regex.match(s_clean) and not s_clean.startswith(("7.1.", "8.0.", "9.0.")):
+                return s_clean
+        for s in strs:
+            s_clean = s.strip()
+            if re.search(r"^\d+\.\d+\.\d+", s_clean):
+                return s_clean
+        return None
+
+    try:
+        if apk_path.suffix == ".apk":
+            with zipfile.ZipFile(apk_path, "r") as zf:
+                if "AndroidManifest.xml" in zf.namelist():
+                    return _find_ver(zf.read("AndroidManifest.xml"))
+        elif apk_path.suffix in (".apkm", ".xapk"):
+            with zipfile.ZipFile(apk_path, "r") as zf:
+                for name in zf.namelist():
+                    if name.endswith(".apk") and not name.startswith("config."):
+                        inner_bytes = zf.read(name)
+                        with zipfile.ZipFile(io.BytesIO(inner_bytes), "r") as inner_zf:
+                            if "AndroidManifest.xml" in inner_zf.namelist():
+                                v = _find_ver(inner_zf.read("AndroidManifest.xml"))
+                                if v:
+                                    return v
+    except Exception:
+        pass
+    return None
 
 
 def _parse_patch_names(list_patches_output: str) -> list[str]:
@@ -188,21 +271,32 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 continue
 
         if not version:
+            cached_vers = []
             for cached_file in ORIGINAL_APK_DIR.iterdir():
                 if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                     m_ver = re.search(r"-v([^-]+)-", cached_file.name)
                     if m_ver:
                         c_ver = m_ver.group(1)
                         if not is_wildcard or c_ver.startswith(f"{prefix}."):
-                            version = c_ver
-                            pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
-                            break
+                            cached_vers.append(c_ver)
+            if cached_vers:
+                version = get_highest_ver(cached_vers)
+                pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
+            elif pkg_name:
+                for cached_file in ORIGINAL_APK_DIR.iterdir():
+                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
+                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
+                        if m_ver:
+                            cached_vers.append(m_ver.group(1))
+                if cached_vers:
+                    version = get_highest_ver(cached_vers)
+                    pr(f"Found fallback cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
 
         if not version:
             if is_wildcard:
                 version = f"{prefix}.0"
             else:
-                raise BuilderError("Could not determine version")
+                version = "latest"
         is_custom = entry.version not in ("auto", "latest")
 
     pr(f"Choosing version '{version}' for '{entry.table}'")
@@ -411,7 +505,21 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         try:
             dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources)
         except BuilderError as exc:
-            if entry.version in ("auto", "latest"):
+            cached_candidates = []
+            if pkg_name:
+                for cached_file in ORIGINAL_APK_DIR.iterdir():
+                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
+                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
+                        if m_ver:
+                            cached_candidates.append(m_ver.group(1))
+
+            if cached_candidates:
+                fallback_ver = get_highest_ver(cached_candidates)
+                wpr(f"Online download failed for '{entry.table}'. Reusing cached version '{fallback_ver}' from '{ORIGINAL_APK_DIR}'...")
+                dl_result = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
+                version = fallback_ver
+                force = True
+            elif entry.version in ("auto", "latest"):
                 fallback_version = None
                 dl_result_fallback = None
                 fallback_order = [s for s in ["uptodown", "apkpure", "github", "apkmirror"] if s in entry.dl_urls]
@@ -460,6 +568,14 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                     raise exc
             else:
                 raise exc
+
+        # Extract actual versionName from APK manifest if version is unspecific ("latest", "auto", "nightly", etc.)
+        real_ver = extract_apk_version(dl_result.path)
+        if real_ver:
+            if version in ("latest", "auto", "nightly") or not version or not re.search(r"\d+\.\d+", version):
+                pr(f"Extracted actual version '{real_ver}' from APK manifest for '{entry.table}' (was '{version}')")
+                version = real_ver
+                force = True
 
         if patcher:
             _verify_sig(dl_result, pkg_name, patcher, label, entry.skip_sigcheck, strict_sigcheck)

@@ -31,7 +31,9 @@ class DirectScraper(BaseScraper):
     def fetch_metadata(self, url: str) -> AppMetadata:
         if url.lower().split("?")[0].endswith((".apk", ".apkm", ".xapk")):
             self._direct_urls[url] = url
-            return AppMetadata(pkg_name="", versions=["latest"])
+            match_ver = re.search(r"[vV]?(\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?)\b", url)
+            ver = match_ver.group(1) if match_ver else "latest"
+            return AppMetadata(pkg_name="", versions=[ver])
 
         try:
             html = self.net.get(url)
@@ -57,7 +59,9 @@ class DirectScraper(BaseScraper):
 
             direct_url = urljoin(url, apk_href)
             self._direct_urls[url] = direct_url
-            return AppMetadata(pkg_name="", versions=["latest"])
+            match_ver = re.search(r"[vV]?(\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?)\b", direct_url)
+            ver = match_ver.group(1) if match_ver else "latest"
+            return AppMetadata(pkg_name="", versions=[ver])
         except Exception as exc:
             if isinstance(exc, DirectScraperError):
                 raise
