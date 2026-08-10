@@ -121,6 +121,9 @@ def _make_scraper(source: str, net: NetworkManager) -> BaseScraper:
             return UptodownScraper(net)
         case "apkpure":
             return APKPureScraper(net)
+        case "direct":
+            from src.scrapers.direct import DirectScraper
+            return DirectScraper(net)
         case _:
             raise ValueError(f"Unknown APK source: {source!r}")
 

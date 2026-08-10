@@ -109,6 +109,7 @@ class NetworkManager:
                     with tmp.open("wb") as fh:
                         for chunk in resp.iter_content(chunk_size=1048576):
                             fh.write(chunk)
+                    resp.close()
                     tmp.replace(dest)
                     return
                 except req_exc.RequestException as exc:

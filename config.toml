@@ -195,5 +195,6 @@ mirror = true
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.redotpay"
+direct-dlurl = "https://www.redotpay.com/app-download"
 uptodown-dlurl = "https://redotpay.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/redotpay/com.redotpay"
+apkpure-dlurl = "https://apkpure.com/redotpay-wallet-buy-btc/com.redotpay"

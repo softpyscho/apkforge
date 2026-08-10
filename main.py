@@ -17,7 +17,7 @@ import shutil
 import signal
 import subprocess
 import sys
-from copy import replace
+from dataclasses import replace
 from pathlib import Path
 
 from src.core.builder import run_build
@@ -57,13 +57,15 @@ def _require_java(min_version: int = 21) -> None:
         abort(f"Java {version} found, but Java {min_version}+ is required")
 
 def _build(target_app: str | None = None, arch_override: str | None = None) -> int:
-    _require_java()
     data = load_toml(CONFIG_PATH)
     main_cfg = parse_config(data)
     pr(f"Loaded config '{CONFIG_PATH}'")
     entries: list[AppEntry] = [e for e in parse_app_entries(data, main_cfg) if e.enabled and (not target_app or e.table == target_app)]
     if target_app and not entries:
         abort(f"App '{target_app}' not found in config")
+
+    if not all(e.mirror for e in entries):
+        _require_java()
 
     if arch_override:
         entries = [replace(e, arch=arch_override) for e in entries]

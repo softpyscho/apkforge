@@ -21,7 +21,7 @@ TEMP_DIR: Path = Path("temp")
 BUILD_DIR: Path = Path("build")
 ORIGINAL_APK_DIR: Path = Path("unmodified-apks")
 CONFIG_PATH: Path = Path("config.toml")
-SOURCES: tuple[str, ...] = ("github", "apkmirror", "uptodown", "apkpure")
+SOURCES: tuple[str, ...] = ("direct", "github", "apkmirror", "uptodown", "apkpure")
 VALID_ARCHES: frozenset[str] = frozenset({"both", "all", "arm64-v8a", "armeabi-v7a", "x86_64", "x86"})
 
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -93,7 +93,11 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
         for src in SOURCES:
             url = t.get(f"{src}-dlurl")
             if isinstance(url, str):
-                dl_urls[src] = url.rstrip("/").removesuffix("download").rstrip("/")
+                if src in ("uptodown", "apkmirror"):
+                    url = url.rstrip("/").removesuffix("download").rstrip("/")
+                else:
+                    url = url.strip()
+                dl_urls[src] = url
 
         raw_patches = t.get("patches", {})
         if not isinstance(raw_patches, dict):
