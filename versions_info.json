@@ -1,9 +1,16 @@
 {
   "success": [
     {
+      "app": "WhatsApp",
+      "label": "WhatsApp (arm64-v8a)",
+      "version": "2.26.30.81",
+      "apk": "whatsapp-mirror-v2.26.30.81-arm64-v8a.apk",
+      "source": "uptodown"
+    },
+    {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "nightly",
+      "version": "2026.08.10-df12d44def51",
       "apk": "Duck.Detector-2026.08.10-df12d44def51.apk",
       "source": "github"
     },
@@ -94,8 +101,8 @@
     {
       "app": "Stremio",
       "label": "Stremio (arm64-v8a)",
-      "version": "latest",
-      "apk": "stremio-mirror-vlatest-arm64-v8a.apk",
+      "version": "2.3.2-android",
+      "apk": "stremio-mirror-v2.3.2-android-arm64-v8a.apk",
       "source": "direct"
     },
     {
@@ -108,8 +115,8 @@
     {
       "app": "RedotPay",
       "label": "RedotPay (arm64-v8a)",
-      "version": "latest",
-      "apk": "redotpay-mirror-vlatest-arm64-v8a.apk",
+      "version": "3.12.0",
+      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
       "source": "direct"
     },
     {
