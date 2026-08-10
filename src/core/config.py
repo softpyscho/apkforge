@@ -72,7 +72,8 @@ def _parse_bool(d: dict[str, object], key: str, default: bool) -> bool:
     raise ValueError(f"'{key}' must be a boolean (true/false without quotes), got {type(value).__name__}")
 
 def parse_config(data: dict[str, object]) -> Config:
-    default_jobs = min(os.process_cpu_count() or 1, 2) if os.getenv("GITHUB_ACTIONS") else (os.process_cpu_count() or 1)
+    cpu_cnt = getattr(os, "process_cpu_count", os.cpu_count)() or 1
+    default_jobs = min(cpu_cnt, 2) if os.getenv("GITHUB_ACTIONS") else cpu_cnt
     return Config(
         parallel_jobs=int(data.get("parallel-jobs", default_jobs)),
         brand=str(data.get("brand", "Morphe")),

@@ -176,25 +176,86 @@ def _app_badge(entry) -> str:
     return f"![{name}]({badge_url})"
 
 
+def _build_additional_settings(entry) -> str:
+    if entry.mirror:
+        if entry.keep_filename:
+            link_filter = entry.pkg_name if entry.pkg_name else entry.app_name.replace(" ", ".")
+            version_regex = f"{link_filter}-(?:v)?([0-9a-zA-Z._-]+)"
+        else:
+            base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
+            link_filter = base_name
+            version_regex = f"{base_name}-v([0-9a-zA-Z._-]+)"
+    else:
+        base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
+        link_filter = base_name
+        version_regex = f"{base_name}-v([0-9.]+)"
+
+    settings = {
+        "intermediateLink": [],
+        "customLinkFilterRegex": link_filter,
+        "filterByLinkText": False,
+        "matchLinksOutsideATags": False,
+        "skipSort": False,
+        "reverseSort": False,
+        "sortByLastLinkSegment": False,
+        "versionExtractWholePage": False,
+        "requestHeader": [
+            {
+                "requestHeader": "User-Agent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+            }
+        ],
+        "defaultPseudoVersioningMethod": "partialAPKHash",
+        "trackOnly": False,
+        "versionExtractionRegEx": version_regex,
+        "matchGroupToUse": "1",
+        "versionDetection": True,
+        "useVersionCodeAsOSVersion": False,
+        "apkFilterRegEx": "",
+        "invertAPKFilter": False,
+        "autoApkFilterByArch": True,
+        "appName": "",
+        "appAuthor": "",
+        "shizukuPretendToBeGooglePlay": False,
+        "allowInsecure": False,
+        "exemptFromBackgroundUpdates": False,
+        "skipUpdateNotifications": False,
+        "about": "",
+        "refreshBeforeDownload": False,
+    }
+    return json.dumps(settings, separators=(',', ':'))
+
+
+def _obtainium_app_payload(entry, version_str: str = "") -> dict:
+    name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
+    obtainium_name = name if entry.mirror else f"{name} {entry.brand.title()}"
+    
+    additional_settings_str = _build_additional_settings(entry)
+
+    return {
+        "id": entry.pkg_name or f"com.{entry.table.lower()}.app",
+        "url": "https://github.com/softpyscho/apkforge/releases/latest",
+        "author": "github.com",
+        "name": obtainium_name,
+        "installedVersion": version_str,
+        "latestVersion": version_str,
+        "apkUrls": "[]",
+        "otherAssetUrls": "[]",
+        "preferredApkIndex": 0,
+        "additionalSettings": additional_settings_str,
+        "lastUpdateCheck": 1786344697135921,
+        "pinned": False,
+        "categories": [],
+        "releaseDate": None,
+        "changeLog": None,
+        "overrideSource": "HTML",
+        "allowIdChange": False,
+        "pendingRepoRenameUrl": None,
+    }
+
+
 def _obtainium_link(entry) -> str:
     """Generate an Obtainium deep link for this specific app."""
-    name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
-    obtainium_name = f"{name} {entry.brand.title()}"
-    
-    base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
-    apk_filter = f"^{base_name}-(v\\w*\\d|\\d|vbuild).*\\.apk$"
-    
-    settings = {
-        "apkFilterRegEx": apk_filter
-    }
-    
-    payload = {
-        "id": entry.pkg_name or f"com.{entry.table.lower()}.app",
-        "name": obtainium_name,
-        "author": "softpyscho",
-        "url": "https://github.com/softpyscho/apkforge",
-        "additionalSettings": json.dumps(settings, separators=(',', ':'))
-    }
+    payload = _obtainium_app_payload(entry)
     
     raw_uri = f"obtainium://app/{json.dumps(payload, separators=(',', ':'))}"
     encoded_uri = urllib.parse.quote(raw_uri, safe="()*")
@@ -202,6 +263,23 @@ def _obtainium_link(entry) -> str:
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r={encoded_uri}"
     badge_img = f'![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)'
     return f"[{badge_img}]({deep_link})"
+
+
+def generate_obtainium_export() -> dict:
+    """Generate complete Obtainium import JSON structure for all enabled apps."""
+    data = load_toml(CONFIG_PATH)
+    config = parse_config(data)
+    entries = parse_app_entries(data, config)
+    versions_cache = _load_versions_cache()
+
+    apps_list = []
+    for entry in entries:
+        if not entry.enabled:
+            continue
+        ver_str = versions_cache.get(entry.table, "")
+        apps_list.append(_obtainium_app_payload(entry, version_str=ver_str))
+
+    return {"apps": apps_list}
 
 
 def generate_apps_section() -> str:
@@ -315,6 +393,8 @@ def update_readme() -> bool:
     )
     new_content = pattern.sub(new_block, content)
 
+    update_obtainium_export()
+
     if new_content == content:
         print("README.md is already up to date.")
         return False
@@ -324,10 +404,22 @@ def update_readme() -> bool:
     return True
 
 
+def update_obtainium_export() -> bool:
+    """Generate and write obtainium.json file."""
+    obtainium_data = generate_obtainium_export()
+    out_path = Path("obtainium.json")
+    content = json.dumps(obtainium_data, indent=4)
+    out_path.write_text(content, encoding="utf-8")
+    print("obtainium.json updated successfully.")
+    return True
+
+
 def main() -> None:
     match sys.argv[1:]:
         case ["generate"]:
             print(generate_apps_section())
+        case ["obtainium"]:
+            print(json.dumps(generate_obtainium_export(), indent=4))
         case ["update"]:
             update_readme()
         case _:
