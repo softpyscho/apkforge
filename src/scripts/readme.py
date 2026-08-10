@@ -282,6 +282,22 @@ def generate_obtainium_export() -> dict:
     return {"apps": apps_list}
 
 
+def _apk_sources_label(entry) -> str:
+    """Generate markdown links for all APK download sources configured for this app."""
+    labels = {
+        "apkmirror": "APKMirror",
+        "uptodown": "Uptodown",
+        "apkpure": "APKPure",
+        "github": "GitHub",
+        "direct": "Direct",
+    }
+    links = []
+    for src_type, url in entry.dl_urls.items():
+        name = labels.get(src_type, src_type.title())
+        links.append(f"[{name}]({url})")
+    return "<br>".join(links) if links else "N/A"
+
+
 def generate_apps_section() -> str:
     """Generate the apps section markdown table."""
     data = load_toml(CONFIG_PATH)
@@ -293,8 +309,13 @@ def generate_apps_section() -> str:
 
     # Group entries by patch source (ordered by first appearance)
     groups: OrderedDict[str, list] = OrderedDict()
+    mirror_apps: list = []
+
     for entry in entries:
         if not entry.enabled:
+            continue
+        if entry.mirror or not entry.patches:
+            mirror_apps.append(entry)
             continue
         for source in entry.patches:
             if source not in groups:
@@ -339,19 +360,48 @@ def generate_apps_section() -> str:
 
         lines.append("<div align=\"center\">")
         lines.append("")
-        lines.append("| App | Arch | Version | Patches | Obtainium |")
-        lines.append("|:---|:----:|:-------:|:--------|:---------:|")
+        lines.append("| App | Arch | Version | APK Source | Patches | Obtainium |")
+        lines.append("|:---|:----:|:-------:|:----------:|:--------|:---------:|")
 
         for entry in apps:
-            badge = _app_badge(entry)
+            badge_md = _app_badge(entry)
             arch = f"`{entry.arch}`"
             version = _version_label(entry, versions_cache)
-            
+            sources = _apk_sources_label(entry)
             general_patches = source_general_patches.get(source, set())
             patches = _patches_label(entry, patches_cache, general_patches)
             obtainium = _obtainium_link(entry)
 
-            lines.append(f"| {badge} | {arch} | {version} | {patches} | {obtainium} |")
+            lines.append(f"| {badge_md} | {arch} | {version} | {sources} | {patches} | {obtainium} |")
+
+        lines.append("")
+        lines.append("</div>")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    if mirror_apps:
+        badge = "Stock Mirrors / Unpatched APKs"
+        encoded_badge = urllib.parse.quote(badge, safe="")
+        lines.append(f'### <img src="https://img.shields.io/badge/{encoded_badge}-4500FF?style=for-the-badge&logo=android&logoColor=white" alt="{badge}">')
+        lines.append("")
+        lines.append("> **Source:** Direct stock APK mirrors (Unpatched)")
+        lines.append("")
+
+        lines.append("<div align=\"center\">")
+        lines.append("")
+        lines.append("| App | Arch | Version | APK Source | Patches | Obtainium |")
+        lines.append("|:---|:----:|:-------:|:----------:|:--------|:---------:|")
+
+        for entry in mirror_apps:
+            badge_md = _app_badge(entry)
+            arch = f"`{entry.arch}`"
+            version = _version_label(entry, versions_cache)
+            sources = _apk_sources_label(entry)
+            patches = "*(None - Stock Mirror)*"
+            obtainium = _obtainium_link(entry)
+
+            lines.append(f"| {badge_md} | {arch} | {version} | {sources} | {patches} | {obtainium} |")
 
         lines.append("")
         lines.append("</div>")
