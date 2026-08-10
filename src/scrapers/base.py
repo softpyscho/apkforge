@@ -35,6 +35,7 @@ class AppMetadata:
 class DownloadResult:
     path: Path
     is_bundle: bool = False
+    original_name: str = ""
 
 class BaseScraper(ABC):
     def __init__(self, net: NetworkManager) -> None:

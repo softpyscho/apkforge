@@ -199,3 +199,13 @@ pkg-name = "com.redotpay"
 direct-dlurl = "https://www.redotpay.com/app-download"
 uptodown-dlurl = "https://redotpay.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/redotpay-wallet-buy-btc/com.redotpay"
+
+[Duck-Detector]
+app-name = "Duck Detector"
+mirror = true
+keep-filename = true
+version = "nightly"
+arch = "all"
+pkg-name = "Duck.Detector"
+github-dlurl = "https://github.com/eltavine/Duck-Detector-Refactoring/releases/tag/nightly"
+

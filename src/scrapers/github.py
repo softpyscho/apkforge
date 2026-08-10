@@ -15,7 +15,7 @@ import json
 import re
 from pathlib import Path
 
-from src.core.network import NetworkManager, ResourceNotFoundError
+from src.core.network import NetworkError, NetworkManager, ResourceNotFoundError
 from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError
 
 _ARCH_SUFFIX = re.compile(r"(?:-(all|arm64-v8a|armeabi-v7a|x86_64|x86))?(?:\.apk\.apkm|\.apk|\.apkm)$", re.I)
@@ -38,7 +38,10 @@ class GitHubScraper(BaseScraper):
         owner, repo, tag = m.groups()
         api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}"
         try:
-            release = json.loads(self.net.get(api_url, headers=self.net._gh_headers))
+            try:
+                release = json.loads(self.net.get(api_url, headers=self.net._gh_headers))
+            except NetworkError:
+                release = json.loads(self.net.get(api_url, headers={}))
         except ResourceNotFoundError:
             raise GitHubReleasesError(f"Release tag '{tag}' not found in '{owner}/{repo}'") from None
 
@@ -48,10 +51,13 @@ class GitHubScraper(BaseScraper):
         seen: dict[str, None] = {}
         for asset in self._assets:
             name = asset.get("name", "")
-            if not name.startswith(prefix) or not name.endswith((".apk", ".apkm")):
+            if not name.endswith((".apk", ".apkm")):
                 continue
 
-            seen[_ARCH_SUFFIX.sub("", name[len(prefix):])] = None
+            if name.startswith(prefix):
+                seen[_ARCH_SUFFIX.sub("", name[len(prefix):])] = None
+            else:
+                seen[_ARCH_SUFFIX.sub("", name)] = None
         return AppMetadata(pkg_name=pkg_name, versions=list(seen) or [tag])
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
@@ -63,13 +69,13 @@ class GitHubScraper(BaseScraper):
         asset = None
         for a in apk_assets:
             name = a["name"]
-            if version_f and version_f not in name:
+            if version_f and version_f not in ("nightly", "latest", "auto") and version_f not in name:
                 continue
 
             m = _ARCH_SUFFIX.search(name)
             file_arch = m.group(1).lower() if m and m.group(1) else "all"
             if arch in ("all", "both"):
-                if file_arch != "all":
+                if file_arch != "all" and len(apk_assets) > 1:
                     continue
             else:
                 if file_arch not in (arch, "all"):
@@ -78,10 +84,18 @@ class GitHubScraper(BaseScraper):
             asset = a
             break
 
+        if asset is None and apk_assets:
+            asset = apk_assets[0]
+
         if asset is None:
             raise GitHubReleasesError(f"No matching variant found for arch '{arch}'")
 
         is_bundle = asset["name"].endswith(".apkm")
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
-        self.net.download(asset["browser_download_url"], out_path, headers=self.net._gh_headers | {"Accept": "application/octet-stream"})
-        return DownloadResult(path=out_path, is_bundle=is_bundle)
+        headers = self.net._gh_headers | {"Accept": "application/octet-stream"} if self.net._gh_headers else {"Accept": "application/octet-stream"}
+        try:
+            self.net.download(asset["browser_download_url"], out_path, headers=headers)
+        except NetworkError:
+            self.net.download(asset["browser_download_url"], out_path, headers={"Accept": "application/octet-stream"})
+
+        return DownloadResult(path=out_path, is_bundle=is_bundle, original_name=asset["name"])

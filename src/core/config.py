@@ -57,6 +57,7 @@ class AppEntry:
     skip_sigcheck: bool
     enabled: bool
     mirror: bool
+    keep_filename: bool
     changelog_keywords: list[str]
 
 def load_toml(path: Path) -> dict[str, object]:
@@ -140,6 +141,7 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             skip_sigcheck=_parse_bool(t, "skip-sigcheck", False),
             enabled=_parse_bool(t, "enabled", True),
             mirror=_parse_bool(t, "mirror", False),
+            keep_filename=_parse_bool(t, "keep-filename", False),
             changelog_keywords=keywords,
         ))
         

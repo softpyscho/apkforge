@@ -74,4 +74,5 @@ class DirectScraper(BaseScraper):
         is_bundle = direct_url.lower().split("?")[0].endswith((".apkm", ".xapk"))
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
         self.net.download(direct_url, out_path)
-        return DownloadResult(path=out_path, is_bundle=is_bundle)
+        orig_name = direct_url.split("?")[0].split("/")[-1]
+        return DownloadResult(path=out_path, is_bundle=is_bundle, original_name=orig_name)

@@ -199,16 +199,24 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     stock_apk = ORIGINAL_APK_DIR / base_name
     if stock_apk.exists():
         pr(f"Reusing existing cached APK: {stock_apk.name}")
-        return DownloadResult(path=stock_apk, is_bundle=False)
+        orig_name = ""
+        orig_meta = stock_apk.with_suffix(".orig")
+        if orig_meta.exists():
+            orig_name = orig_meta.read_text(encoding="utf-8").strip()
+        return DownloadResult(path=stock_apk, is_bundle=False, original_name=orig_name)
 
     stock_apkm = stock_apk.with_suffix(".apkm")
     if stock_apkm.exists():
         pr(f"Reusing existing cached APK: {stock_apkm.name}")
-        return DownloadResult(path=stock_apkm, is_bundle=True)
+        orig_name = ""
+        orig_meta = stock_apkm.with_suffix(".orig")
+        if orig_meta.exists():
+            orig_name = orig_meta.read_text(encoding="utf-8").strip()
+        return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name)
 
     # Cleanup old versions of this specific package before downloading the new one
     for old_file in ORIGINAL_APK_DIR.iterdir():
-        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk")):
+        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig")):
             if f"-v{version_f}-" not in old_file.name:  # Don't delete other architectures of the current version
                 pr(f"Deleting outdated APK version: {old_file.name}")
                 old_file.unlink(missing_ok=True)
@@ -223,6 +231,8 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
         try:
             res = scrapers[src].download(url, version, stock_apk, arch, entry.dpi)
             _validate_download(res.path)
+            if res.original_name:
+                res.path.with_suffix(".orig").write_text(res.original_name, encoding="utf-8")
             return res
         except (NetworkError, ScraperError, BuilderError) as exc:
             epr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
@@ -436,10 +446,13 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             
         
         if entry.mirror:
-            arch_f = arch.replace(" ", "")
-            version_f = version.replace(" ", "").lstrip("v")
-            base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
-            apk_name = f"{base_name}-v{version_f}-{arch_f}.apk"
+            if entry.keep_filename and dl_result.original_name:
+                apk_name = dl_result.original_name
+            else:
+                arch_f = arch.replace(" ", "")
+                version_f = version.replace(" ", "").lstrip("v")
+                base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
+                apk_name = f"{base_name}-v{version_f}-{arch_f}.apk"
             apk_output = BUILD_DIR / apk_name
             shutil.copy(dl_result.path, apk_output)
             excluded_patches = []

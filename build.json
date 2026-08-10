@@ -1,10 +1,10 @@
 {
   "success": [
     {
-      "app": "RedotPay",
-      "label": "RedotPay (arm64-v8a)",
-      "version": "latest",
-      "apk": "redotpay-mirror-vlatest-arm64-v8a.apk"
+      "app": "Duck-Detector",
+      "label": "Duck Detector",
+      "version": "nightly",
+      "apk": "Duck.Detector-2026.08.10-df12d44def51.apk"
     }
   ],
   "failed": [],
