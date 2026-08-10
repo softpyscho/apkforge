@@ -45,7 +45,7 @@ def _handle_status(resp, url: str, attempt: int) -> bool:
     if resp.status_code == 404:
         raise ResourceNotFoundError(f"Not found (404): {url}")
 
-    if resp.status_code == 403 or resp.status_code >= 500:
+    if resp.status_code in (403, 410, 429) or resp.status_code >= 500:
         epr(f"HTTP {resp.status_code} for {url}, attempt {attempt}/{_MAX_ATTEMPTS}")
         return True
 
@@ -55,7 +55,12 @@ def _handle_status(resp, url: str, attempt: int) -> bool:
 
 class NetworkManager:
     def __init__(self) -> None:
-        self.session = requests.Session(impersonate="chrome146")
+        self.session = requests.Session(impersonate="chrome")
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
         token = os.getenv("GITHUB_TOKEN")
         self._gh_headers: dict[str, str] = {"Authorization": f"token {token}"} if token else {}
         self._domain_locks: dict[str, threading.Lock] = {}

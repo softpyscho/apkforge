@@ -172,15 +172,20 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
-        try:
-            versions = scrapers[dl_from].cached_metadata(entry.dl_urls[dl_from]).versions
-            if is_wildcard:
-                matching = [v for v in versions if v.startswith(f"{prefix}.")]
-                version = get_highest_ver(matching) if matching else get_highest_ver(versions)
-            else:
-                version = get_highest_ver(versions) if versions else ""
-        except (NetworkError, ScraperError):
-            version = ""
+        version = ""
+        sources_to_try = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
+        for src in sources_to_try:
+            try:
+                versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
+                if is_wildcard:
+                    matching = [v for v in versions if v.startswith(f"{prefix}.")]
+                    version = get_highest_ver(matching) if matching else (get_highest_ver(versions) if versions else "")
+                else:
+                    version = get_highest_ver(versions) if versions else ""
+                if version:
+                    break
+            except (NetworkError, ScraperError):
+                continue
 
         if not version:
             for cached_file in ORIGINAL_APK_DIR.iterdir():
@@ -233,11 +238,16 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
                 pr(f"Deleting outdated APK version: {old_file.name}")
                 old_file.unlink(missing_ok=True)
 
-    ordered_sources = list(entry.dl_urls.keys())
-    for src in ordered_sources:
-        if src in failed_sources:
-            continue
+    ordered_sources = [s for s in entry.dl_urls if s not in failed_sources]
+    if dl_from in ordered_sources:
+        ordered_sources.remove(dl_from)
+        ordered_sources.insert(0, dl_from)
+    if not ordered_sources:
+        ordered_sources = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
+        seen = set()
+        ordered_sources = [s for s in ordered_sources if not (s in seen or seen.add(s))]
 
+    for src in ordered_sources:
         url = entry.dl_urls[src]
         pr(f"Downloading '{entry.table}' from '{src}'")
         try:

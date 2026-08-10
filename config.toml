@@ -218,7 +218,6 @@ pkg-name = "com.whatsapp"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
 uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"
-
 [WhatsApp-Business]
 app-name = "WhatsApp Business"
 mirror = true

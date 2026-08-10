@@ -12,6 +12,7 @@
 # ---------------------------------------------------------
 
 import json  # noqa: I001
+import re
 from pathlib import Path
 
 from src.core.network import NetworkManager
@@ -29,11 +30,12 @@ class UptodownScraper(BaseScraper):
         self._versions_cache: dict[str, str] = {}
 
     def fetch_metadata(self, url: str) -> AppMetadata:
-        versions_html = self.net.get(f"{url}/versions")
+        url_clean = url.rstrip("/")
+        versions_html = self.net.get(f"{url_clean}/versions")
         self._versions_cache[url] = versions_html
-        pkg_html = self.net.get(f"{url}/download")
+        pkg_html = self.net.get(f"{url_clean}/download")
         soup_pkg = _parse_html(pkg_html)
-        th = soup_pkg.find("th", string="Package Name")
+        th = soup_pkg.find("th", string=re.compile(r"package\s*name", re.IGNORECASE))
         if th and (td := th.find_next_sibling("td")):
             pkg_name = td.get_text(strip=True)
         else:
@@ -44,7 +46,8 @@ class UptodownScraper(BaseScraper):
         return AppMetadata(pkg_name=pkg_name, versions=versions)
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
-        versions_html = self._versions_cache.get(url) or self.net.get(f"{url}/versions")
+        url_clean = url.rstrip("/")
+        versions_html = self._versions_cache.get(url) or self.net.get(f"{url_clean}/versions")
         self._versions_cache[url] = versions_html
 
         apparch: set[str] = set(_DEFAULT_ARCH)
@@ -53,13 +56,13 @@ class UptodownScraper(BaseScraper):
 
         soup = _parse_html(versions_html)
         data_code = str(soup.select_one("#detail-app-name")["data-code"])
-        version_url_data = self._find_version_url(url, data_code, version)
+        version_url_data = self._find_version_url(url_clean, data_code, version)
         ver_url = "/".join((version_url_data["url"], version_url_data["extraURL"], str(version_url_data["versionID"])))
         is_bundle = version_url_data.get("kindFile") == "xapk"
         soup_ver = _parse_html(self.net.get(ver_url))
         btn_variants = soup_ver.select_one(".button.variants")
         if btn_variants and (data_version := btn_variants.get("data-version")):
-            resp, is_bundle = self._pick_variant_file(url, data_code, str(data_version), apparch)
+            resp, is_bundle = self._pick_variant_file(url_clean, data_code, str(data_version), apparch)
             soup_ver = _parse_html(resp)
 
         dl_url = soup_ver.select_one("#detail-download-button")["data-url"]
@@ -68,8 +71,9 @@ class UptodownScraper(BaseScraper):
         return DownloadResult(path=out_path, is_bundle=is_bundle)
 
     def _find_version_url(self, url: str, data_code: str, version: str) -> dict:
+        url_clean = url.rstrip("/")
         for i in range(1, 21):
-            payload = json.loads(self.net.get(f"{url}/apps/{data_code}/versions/{i}"))
+            payload = json.loads(self.net.get(f"{url_clean}/apps/{data_code}/versions/{i}"))
             data = payload.get("data")
             if not data:
                 break
@@ -82,7 +86,8 @@ class UptodownScraper(BaseScraper):
         raise UptodownError("Version not found")
 
     def _pick_variant_file(self, url: str, data_code: str, data_version: str, apparch: set[str]) -> tuple[str, bool]:
-        base_url = url.rsplit("/", 1)[0]
+        url_clean = url.rstrip("/")
+        base_url = url_clean.rsplit("/", 1)[0]
         files_html = json.loads(self.net.get(f"{base_url}/app/{data_code}/version/{data_version}/files")).get("content", "")
         soup = _parse_html(files_html)
         content = soup.select_one(".content")
@@ -108,5 +113,5 @@ class UptodownScraper(BaseScraper):
             if file_id is None:
                 continue
 
-            return self.net.get(f"{url}/download/{file_id}-x"), is_bundle
+            return self.net.get(f"{url_clean}/download/{file_id}-x"), is_bundle
         raise UptodownError("No matching variant found")
