@@ -164,14 +164,21 @@ def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[s
 
 
 def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: str, pkg_name: str, dl_from: str, scrapers: dict[str, BaseScraper]) -> tuple[str, bool]:
-    if entry.version not in ("auto", "latest"):
+    is_wildcard = entry.version.endswith(".xx")
+    prefix = entry.version[:-3] if is_wildcard else ""
+
+    if entry.version not in ("auto", "latest") and not is_wildcard:
         version, is_custom = entry.version, True
     elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
         try:
             versions = scrapers[dl_from].cached_metadata(entry.dl_urls[dl_from]).versions
-            version = get_highest_ver(versions) if versions else ""
+            if is_wildcard:
+                matching = [v for v in versions if v.startswith(f"{prefix}.")]
+                version = get_highest_ver(matching) if matching else get_highest_ver(versions)
+            else:
+                version = get_highest_ver(versions) if versions else ""
         except (NetworkError, ScraperError):
             version = ""
 
@@ -180,13 +187,18 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                     m_ver = re.search(r"-v([^-]+)-", cached_file.name)
                     if m_ver:
-                        version = m_ver.group(1)
-                        pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
-                        break
+                        c_ver = m_ver.group(1)
+                        if not is_wildcard or c_ver.startswith(f"{prefix}."):
+                            version = c_ver
+                            pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
+                            break
 
         if not version:
-            raise BuilderError("Could not determine version")
-        is_custom = entry.version != "auto"
+            if is_wildcard:
+                version = f"{prefix}.0"
+            else:
+                raise BuilderError("Could not determine version")
+        is_custom = entry.version not in ("auto", "latest")
 
     pr(f"Choosing version '{version}' for '{entry.table}'")
     return version, is_custom

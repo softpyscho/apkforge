@@ -339,6 +339,46 @@
             "overrideSource": "HTML",
             "allowIdChange": false,
             "pendingRepoRenameUrl": null
+        },
+        {
+            "id": "com.whatsapp",
+            "url": "https://github.com/softpyscho/apkforge/releases/latest",
+            "author": "github.com",
+            "name": "WhatsApp",
+            "installedVersion": "",
+            "latestVersion": "",
+            "apkUrls": "[]",
+            "otherAssetUrls": "[]",
+            "preferredApkIndex": 0,
+            "additionalSettings": "{\"intermediateLink\":[],\"customLinkFilterRegex\":\"whatsapp-mirror\",\"filterByLinkText\":false,\"matchLinksOutsideATags\":false,\"skipSort\":false,\"reverseSort\":false,\"sortByLastLinkSegment\":false,\"versionExtractWholePage\":false,\"requestHeader\":[{\"requestHeader\":\"User-Agent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36\"}],\"defaultPseudoVersioningMethod\":\"partialAPKHash\",\"trackOnly\":false,\"versionExtractionRegEx\":\"whatsapp-mirror-v([0-9a-zA-Z._-]+)\",\"matchGroupToUse\":\"1\",\"versionDetection\":true,\"useVersionCodeAsOSVersion\":false,\"apkFilterRegEx\":\"\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"appName\":\"\",\"appAuthor\":\"\",\"shizukuPretendToBeGooglePlay\":false,\"allowInsecure\":false,\"exemptFromBackgroundUpdates\":false,\"skipUpdateNotifications\":false,\"about\":\"\",\"refreshBeforeDownload\":false}",
+            "lastUpdateCheck": 1786344697135921,
+            "pinned": false,
+            "categories": [],
+            "releaseDate": null,
+            "changeLog": null,
+            "overrideSource": "HTML",
+            "allowIdChange": false,
+            "pendingRepoRenameUrl": null
+        },
+        {
+            "id": "com.whatsapp.w4b",
+            "url": "https://github.com/softpyscho/apkforge/releases/latest",
+            "author": "github.com",
+            "name": "WhatsApp Business",
+            "installedVersion": "",
+            "latestVersion": "",
+            "apkUrls": "[]",
+            "otherAssetUrls": "[]",
+            "preferredApkIndex": 0,
+            "additionalSettings": "{\"intermediateLink\":[],\"customLinkFilterRegex\":\"whatsapp-business-mirror\",\"filterByLinkText\":false,\"matchLinksOutsideATags\":false,\"skipSort\":false,\"reverseSort\":false,\"sortByLastLinkSegment\":false,\"versionExtractWholePage\":false,\"requestHeader\":[{\"requestHeader\":\"User-Agent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36\"}],\"defaultPseudoVersioningMethod\":\"partialAPKHash\",\"trackOnly\":false,\"versionExtractionRegEx\":\"whatsapp-business-mirror-v([0-9a-zA-Z._-]+)\",\"matchGroupToUse\":\"1\",\"versionDetection\":true,\"useVersionCodeAsOSVersion\":false,\"apkFilterRegEx\":\"\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"appName\":\"\",\"appAuthor\":\"\",\"shizukuPretendToBeGooglePlay\":false,\"allowInsecure\":false,\"exemptFromBackgroundUpdates\":false,\"skipUpdateNotifications\":false,\"about\":\"\",\"refreshBeforeDownload\":false}",
+            "lastUpdateCheck": 1786344697135921,
+            "pinned": false,
+            "categories": [],
+            "releaseDate": null,
+            "changeLog": null,
+            "overrideSource": "HTML",
+            "allowIdChange": false,
+            "pendingRepoRenameUrl": null
         }
     ]
 }

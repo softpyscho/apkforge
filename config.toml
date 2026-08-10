@@ -209,3 +209,22 @@ arch = "all"
 pkg-name = "Duck.Detector"
 github-dlurl = "https://github.com/eltavine/Duck-Detector-Refactoring/releases/tag/nightly"
 
+[WhatsApp]
+app-name = "WhatsApp"
+mirror = true
+version = "2.26.30.xx"
+arch = "arm64-v8a"
+pkg-name = "com.whatsapp"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
+uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"
+
+[WhatsApp-Business]
+app-name = "WhatsApp Business"
+mirror = true
+version = "2.26.30.xx"
+arch = "arm64-v8a"
+pkg-name = "com.whatsapp.w4b"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/"
+uptodown-dlurl = "https://whatsapp-business.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.com/whatsapp-business/com.whatsapp.w4b"
