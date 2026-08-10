@@ -56,6 +56,7 @@ class AppEntry:
     cli_version: str
     skip_sigcheck: bool
     enabled: bool
+    mirror: bool
     changelog_keywords: list[str]
 
 def load_toml(path: Path) -> dict[str, object]:
@@ -134,6 +135,7 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             cli_version=str(t.get("cli-version", main.cli_version)),
             skip_sigcheck=_parse_bool(t, "skip-sigcheck", False),
             enabled=_parse_bool(t, "enabled", True),
+            mirror=_parse_bool(t, "mirror", False),
             changelog_keywords=keywords,
         ))
         
@@ -148,7 +150,7 @@ def validate_config(entries: list[AppEntry]) -> None:
             raise ValueError(f"Duplicate table name: '{e.table}'")
         seen_tables.add(e.table)
         
-        if not e.patches:
+        if not e.patches and not e.mirror:
             raise ValueError(f"'{e.table}' has no patches defined")
         
         if not e.dl_urls:

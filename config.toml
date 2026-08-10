@@ -148,3 +148,11 @@ apkpure-dlurl = "https://apkpure.com/battery-guru-battery-health/com.paget96.bat
 
 [Battery-Guru.patches]
 "github:arandomhooman/hoomans-morphe-patches" = { version = "dev" }
+
+[Bitget]
+app-name = "Bitget"
+mirror = true
+version = "latest"
+arch = "arm64-v8a"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/bg-limited/bitget-buy-sell-crypto/"
+

@@ -154,10 +154,10 @@ def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[s
     raise BuilderError("Package name not found")
 
 
-def _resolve_version(entry: AppEntry, patcher: PatcherCLI, list_patches: str, pkg_name: str, dl_from: str, scrapers: dict[str, BaseScraper]) -> tuple[str, bool]:
+def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: str, pkg_name: str, dl_from: str, scrapers: dict[str, BaseScraper]) -> tuple[str, bool]:
     if entry.version not in ("auto", "latest"):
         version, is_custom = entry.version, True
-    elif entry.version in ("auto", "latest") and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
+    elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
         versions = scrapers[dl_from].cached_metadata(entry.dl_urls[dl_from]).versions
@@ -332,7 +332,7 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     return apk_output
 
 
-def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, patcher: PatcherCLI, strict_sigcheck: bool) -> str | None:
+def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, patcher: PatcherCLI | None, strict_sigcheck: bool) -> dict | None:
     if entry.table in _failed_signatures:
         epr(f"Skipped '{label}' due to previous signature mismatch")
         return None
@@ -340,8 +340,10 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
     try:
         scrapers = {src: _make_scraper(src, net) for src in entry.dl_urls}
         pkg_name, dl_from, failed_sources = _find_pkg_name(entry, scrapers)
-        list_patches = patcher.list_patches(pkg_name, experimental=entry.version == "latest")
-        _patches_info[entry.table] = _parse_patch_names(list_patches)
+        list_patches = ""
+        if patcher:
+            list_patches = patcher.list_patches(pkg_name, experimental=entry.version == "latest")
+            _patches_info[entry.table] = _parse_patch_names(list_patches)
         version, force = _resolve_version(entry, patcher, list_patches, pkg_name, dl_from, scrapers)
 
         try:
@@ -389,14 +391,16 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 if fallback_version and dl_result_fallback:
                     version = fallback_version
                     force = True
-                    list_patches = patcher.list_patches(pkg_name, experimental=True)
+                    if patcher:
+                        list_patches = patcher.list_patches(pkg_name, experimental=True)
                     dl_result = dl_result_fallback
                 else:
                     raise exc
             else:
                 raise exc
 
-        _verify_sig(dl_result, pkg_name, patcher, label, entry.skip_sigcheck, strict_sigcheck)
+        if patcher:
+            _verify_sig(dl_result, pkg_name, patcher, label, entry.skip_sigcheck, strict_sigcheck)
         
         # ----------------------------------------------------
         # NEW: Bundle Optimization logic (Strip bloat splits)
@@ -409,6 +413,21 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             dl_result = DownloadResult(path=optimized_bundle, is_bundle=True)
             
         
+        if entry.mirror:
+            arch_f = arch.replace(" ", "")
+            version_f = version.replace(" ", "").lstrip("v")
+            base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
+            apk_name = f"{base_name}-v{version_f}-{arch_f}.apk"
+            apk_output = BUILD_DIR / apk_name
+            shutil.copy(dl_result.path, apk_output)
+            excluded_patches = []
+            
+            pr(f"Mirrored {label}: '{apk_output}'")
+            github_asset_name = re.sub(r"\.+", ".", re.sub(r"[^a-zA-Z0-9@+\-_.]", ".", apk_output.name))
+            ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
+            
+            return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "excluded_patches": [], "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
+
         # Dynamic Exclude Loop (Max 5 retries to prevent endless loops)
         excluded_patches = []
         max_retries = 5
@@ -453,7 +472,7 @@ def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: Netw
     futures: list[Future[dict | None]] = []
     cli_cache: dict[tuple[str, str], Path] = {}
     for e in entries:
-        if not e.dl_urls:
+        if not e.dl_urls or e.mirror:
             continue
 
         key = (e.cli_source, e.cli_version)
@@ -463,7 +482,7 @@ def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: Netw
             except Exception as exc:
                 epr(f"Could not fetch CLI '{e.cli_source}': {exc}")
 
-    all_patch_srcs = {(src, spec["version"]) for e in entries if e.dl_urls for src, spec in e.patches.items()}
+    all_patch_srcs = {(src, spec["version"]) for e in entries if e.dl_urls and not e.mirror for src, spec in e.patches.items()}
     mpp_map: dict[tuple[str, str], Path] = {}
     for src, ver in all_patch_srcs:
         try:
@@ -475,20 +494,23 @@ def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: Netw
         if not entry.dl_urls:
             epr(f"No 'dlurl' option was set for '{entry.table}'")
             continue
-        if not entry.patches:
+        if not entry.patches and not entry.mirror:
             epr(f"No 'patches' table defined for '{entry.table}'")
             continue
 
-        cli_key = (entry.cli_source, entry.cli_version)
-        if cli_key not in cli_cache:
-            continue
+        patcher = None
+        if not entry.mirror:
+            cli_key = (entry.cli_source, entry.cli_version)
+            if cli_key not in cli_cache:
+                continue
 
-        app_mpp_map = {(src, spec["version"]): mpp_map[(src, spec["version"])] for src, spec in entry.patches.items() if (src, spec["version"]) in mpp_map}
-        if not app_mpp_map:
-            epr(f"No patch files available for '{entry.table}'")
-            continue
+            app_mpp_map = {(src, spec["version"]): mpp_map[(src, spec["version"])] for src, spec in entry.patches.items() if (src, spec["version"]) in mpp_map}
+            if not app_mpp_map:
+                epr(f"No patch files available for '{entry.table}'")
+                continue
 
-        patcher = PatcherCLI(cli_cache[cli_key], app_mpp_map, APKSIGNER, ks_path=ks_path)
+            patcher = PatcherCLI(cli_cache[cli_key], app_mpp_map, APKSIGNER, ks_path=ks_path)
+            
         arches = ("arm64-v8a", "armeabi-v7a") if entry.arch == "both" else (entry.arch,)
         for arch in arches:
             label = entry.app_name if entry.arch == "all" else f"{entry.app_name} ({arch})"
