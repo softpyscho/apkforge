@@ -1,6 +1,12 @@
 {
   "success": [
     {
+      "app": "Mixplorer",
+      "label": "Mixplorer (arm64-v8a)",
+      "version": "6.71.10",
+      "apk": "mixplorer-mirror-v6.71.10-arm64-v8a.apk"
+    },
+    {
       "app": "Instagram",
       "label": "Instagram (arm64-v8a)",
       "version": "439.0.0.37.89",
@@ -37,6 +43,12 @@
       "apk": "battery-guru-morphe-v2.5.0.2-arm64-v8a.apk"
     },
     {
+      "app": "Mix-Archive",
+      "label": "Mix Archive (arm64-v8a)",
+      "version": "3.21",
+      "apk": "mix-archive-mirror-v3.21-arm64-v8a.apk"
+    },
+    {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.7.1-release.0",
@@ -53,6 +65,12 @@
       "label": "Splitwise (arm64-v8a)",
       "version": "26.7.2",
       "apk": "splitwise-morphe-v26.7.2-arm64-v8a.apk"
+    },
+    {
+      "app": "Stremio",
+      "label": "Stremio (arm64-v8a)",
+      "version": "2.3.2",
+      "apk": "stremio-mirror-v2.3.2-arm64-v8a.apk"
     },
     {
       "app": "Truecaller",
