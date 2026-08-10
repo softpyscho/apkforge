@@ -1,0 +1,12 @@
+{
+  "success": [
+    {
+      "app": "RedotPay",
+      "label": "RedotPay (arm64-v8a)",
+      "version": "latest",
+      "apk": "redotpay-mirror-vlatest-arm64-v8a.apk"
+    }
+  ],
+  "failed": [],
+  "excluded_patches": {}
+}
