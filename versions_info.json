@@ -65,6 +65,12 @@
       "label": "TickTick (arm64-v8a)",
       "version": "8.1.3.3",
       "apk": "ticktick-morphe-v8.1.3.3-arm64-v8a.apk"
+    },
+    {
+      "app": "Bitget",
+      "label": "Bitget (arm64-v8a)",
+      "version": "2.90.1",
+      "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk"
     }
   ]
 }
