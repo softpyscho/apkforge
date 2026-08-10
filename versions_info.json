@@ -37,12 +37,6 @@
       "apk": "warp-morphe-v6.38.8-arm64-v8a.apk"
     },
     {
-      "app": "Battery-Guru",
-      "label": "Battery Guru (arm64-v8a)",
-      "version": "2.5.0.2",
-      "apk": "battery-guru-morphe-v2.5.0.2-arm64-v8a.apk"
-    },
-    {
       "app": "Mix-Archive",
       "label": "Mix Archive (arm64-v8a)",
       "version": "3.21",
@@ -67,16 +61,16 @@
       "apk": "splitwise-morphe-v26.7.2-arm64-v8a.apk"
     },
     {
-      "app": "Stremio",
-      "label": "Stremio (arm64-v8a)",
-      "version": "2.3.2",
-      "apk": "stremio-mirror-v2.3.2-arm64-v8a.apk"
-    },
-    {
       "app": "Truecaller",
       "label": "Truecaller (arm64-v8a)",
       "version": "26.10.6",
       "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk"
+    },
+    {
+      "app": "RedotPay",
+      "label": "RedotPay (arm64-v8a)",
+      "version": "latest",
+      "apk": "redotpay-mirror-vlatest-arm64-v8a.apk"
     },
     {
       "app": "TickTick",
