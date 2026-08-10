@@ -1,6 +1,12 @@
 {
   "success": [
     {
+      "app": "Duck-Detector",
+      "label": "Duck Detector",
+      "version": "nightly",
+      "apk": "Duck.Detector-2026.08.10-df12d44def51.apk"
+    },
+    {
       "app": "Mixplorer",
       "label": "Mixplorer (arm64-v8a)",
       "version": "6.71.10",
