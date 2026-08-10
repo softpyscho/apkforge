@@ -36,6 +36,7 @@ class DownloadResult:
     path: Path
     is_bundle: bool = False
     original_name: str = ""
+    source_used: str = ""
 
 class BaseScraper(ABC):
     def __init__(self, net: NetworkManager) -> None:

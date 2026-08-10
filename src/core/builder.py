@@ -214,13 +214,20 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     version_f = version.replace(" ", "").lstrip("v")
     base_name = f"{pkg_name}-v{version_f}-{arch_f}.apk"
     stock_apk = ORIGINAL_APK_DIR / base_name
+
+    def _read_src(path: Path) -> str:
+        src_meta = path.with_suffix(".src")
+        if src_meta.exists():
+            return src_meta.read_text(encoding="utf-8").strip()
+        return dl_from
+
     if stock_apk.exists():
         pr(f"Reusing existing cached APK: {stock_apk.name}")
         orig_name = ""
         orig_meta = stock_apk.with_suffix(".orig")
         if orig_meta.exists():
             orig_name = orig_meta.read_text(encoding="utf-8").strip()
-        return DownloadResult(path=stock_apk, is_bundle=False, original_name=orig_name)
+        return DownloadResult(path=stock_apk, is_bundle=False, original_name=orig_name, source_used=_read_src(stock_apk))
 
     stock_apkm = stock_apk.with_suffix(".apkm")
     if stock_apkm.exists():
@@ -229,11 +236,11 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
         orig_meta = stock_apkm.with_suffix(".orig")
         if orig_meta.exists():
             orig_name = orig_meta.read_text(encoding="utf-8").strip()
-        return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name)
+        return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name, source_used=_read_src(stock_apkm))
 
     # Cleanup old versions of this specific package before downloading the new one
     for old_file in ORIGINAL_APK_DIR.iterdir():
-        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig")):
+        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig", ".src")):
             if f"-v{version_f}-" not in old_file.name:  # Don't delete other architectures of the current version
                 pr(f"Deleting outdated APK version: {old_file.name}")
                 old_file.unlink(missing_ok=True)
@@ -255,7 +262,8 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
             _validate_download(res.path)
             if res.original_name:
                 res.path.with_suffix(".orig").write_text(res.original_name, encoding="utf-8")
-            return res
+            res.path.with_suffix(".src").write_text(src, encoding="utf-8")
+            return DownloadResult(path=res.path, is_bundle=res.is_bundle, original_name=res.original_name, source_used=src)
         except (NetworkError, ScraperError, BuilderError) as exc:
             epr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
     raise BuilderError("Stock APK not found")
@@ -464,7 +472,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             _optimize_bundle(dl_result.path, optimized_bundle, arch)
             
             # Point the dl_result to the new lightweight bundle for the patcher
-            dl_result = DownloadResult(path=optimized_bundle, is_bundle=True)
+            dl_result = DownloadResult(path=optimized_bundle, is_bundle=True, source_used=dl_result.source_used)
             
         
         if entry.mirror:
@@ -483,7 +491,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             github_asset_name = re.sub(r"\.+", ".", re.sub(r"[^a-zA-Z0-9@+\-_.]", ".", apk_output.name))
             ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
             
-            return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "excluded_patches": [], "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
+            return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": [], "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
 
         # Dynamic Exclude Loop (Max 5 retries to prevent endless loops)
         excluded_patches = []
@@ -515,7 +523,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
         
         excluded_str = ", ".join(excluded_patches) if excluded_patches else ""
-        return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "excluded_patches": excluded_patches, "success": True, "log": f"- 🟢 » {label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")}
+        return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": excluded_patches, "success": True, "log": f"- 🟢 » {label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")}
     except (BuilderError, PatcherError, ScraperError, NetworkError, SignatureError) as exc:
         if isinstance(exc, SignatureError):
             _failed_signatures.add(entry.table)
@@ -602,7 +610,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
         if r := fut.result():
             if r["success"]:
                 log_lines.append(r["log"])
-                report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"]})
+                report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"], "source": r["source"]})
                 if r["excluded_patches"]:
                     report_data["excluded_patches"][r["label"]] = r["excluded_patches"]
             else:
