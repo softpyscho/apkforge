@@ -185,6 +185,7 @@ mirror = true
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.stremio.one"
+direct-dlurl = "https://www.stremio.com/downloads"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/stremio/stremio-2/"
 uptodown-dlurl = "https://stremio-one.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/stremio-app/com.stremio.one"

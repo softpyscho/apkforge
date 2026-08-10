@@ -154,6 +154,12 @@ def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[s
         except (NetworkError, ScraperError) as exc:
             epr(f"Could not find '{entry.table}' in '{src}': {exc}")
             failed.add(src)
+
+    if entry.pkg_name:
+        first_src = next(iter(entry.dl_urls.keys()))
+        pr(f"Package name of '{entry.table}' is '{entry.pkg_name}' (from config)")
+        return entry.pkg_name, first_src, failed
+
     raise BuilderError("Package name not found")
 
 
@@ -163,8 +169,21 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
-        versions = scrapers[dl_from].cached_metadata(entry.dl_urls[dl_from]).versions
-        version = get_highest_ver(versions) if versions else ""
+        try:
+            versions = scrapers[dl_from].cached_metadata(entry.dl_urls[dl_from]).versions
+            version = get_highest_ver(versions) if versions else ""
+        except (NetworkError, ScraperError):
+            version = ""
+
+        if not version:
+            for cached_file in ORIGINAL_APK_DIR.iterdir():
+                if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
+                    m_ver = re.search(r"-v([^-]+)-", cached_file.name)
+                    if m_ver:
+                        version = m_ver.group(1)
+                        pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
+                        break
+
         if not version:
             raise BuilderError("Could not determine version")
         is_custom = entry.version != "auto"
