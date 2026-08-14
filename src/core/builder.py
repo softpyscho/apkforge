@@ -480,6 +480,9 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
         if res.stderr:
             print(res.stderr, file=sys.stderr)
             captured_out.append(res.stderr)
+        if res.returncode != 0:
+            full_out = "\n".join(captured_out)
+            raise PatcherError(f"Patcher CLI exited with code {res.returncode}:\n{full_out}")
         return res
         
     try:
@@ -487,6 +490,10 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     except Exception as exc:
         full_out = "\n".join(captured_out)
         raise BuilderError(f"{exc}\n{full_out}") from exc
+
+    if not patched_apk.exists():
+        full_out = "\n".join(captured_out)
+        raise BuilderError(f"Patched APK output was not created at '{patched_apk}':\n{full_out}")
 
     apk_output = BUILD_DIR / apk_name
     shutil.move(patched_apk, apk_output)

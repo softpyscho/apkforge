@@ -61,20 +61,34 @@ class UptodownScraper(BaseScraper):
             apparch.add(arch)
 
         soup = _parse_html(versions_html)
-        data_code = str(soup.select_one("#detail-app-name")["data-code"])
-        version_url_data = self._find_version_url(url_clean, data_code, version)
-        ver_url = "/".join((version_url_data["url"], version_url_data["extraURL"], str(version_url_data["versionID"])))
-        is_bundle = version_url_data.get("kindFile") == "xapk"
-        soup_ver = _parse_html(self.net.get(ver_url))
-        btn_variants = soup_ver.select_one(".button.variants")
-        if btn_variants and (data_version := btn_variants.get("data-version")):
-            resp, is_bundle = self._pick_variant_file(url_clean, data_code, str(data_version), apparch)
-            soup_ver = _parse_html(resp)
+        try:
+            data_code_el = soup.select_one("#detail-app-name")
+            if not data_code_el or not data_code_el.get("data-code"):
+                raise UptodownError("data-code element not found")
+            data_code = str(data_code_el["data-code"])
+            version_url_data = self._find_version_url(url_clean, data_code, version)
+            ver_url = "/".join((version_url_data["url"], version_url_data["extraURL"], str(version_url_data["versionID"])))
+            is_bundle = version_url_data.get("kindFile") == "xapk"
+            soup_ver = _parse_html(self.net.get(ver_url))
+            btn_variants = soup_ver.select_one(".button.variants")
+            if btn_variants and (data_version := btn_variants.get("data-version")):
+                resp, is_bundle = self._pick_variant_file(url_clean, data_code, str(data_version), apparch)
+                soup_ver = _parse_html(resp)
 
-        dl_url = soup_ver.select_one("#detail-download-button")["data-url"]
-        out_path = dest.with_suffix(".apkm") if is_bundle else dest
-        self.net.download(f"https://dw.uptodown.com/dwn/{dl_url}", out_path)
-        return DownloadResult(path=out_path, is_bundle=is_bundle)
+            dl_btn = soup_ver.select_one("#detail-download-button, a.button.download, a.download-button, a[data-url]")
+            if not dl_btn:
+                raise UptodownError("Download button not found on page")
+            dl_url = dl_btn.get("data-url") or dl_btn.get("data-link") or dl_btn.get("href")
+            if not dl_url:
+                raise UptodownError("Download URL attribute not found")
+
+            out_path = dest.with_suffix(".apkm") if is_bundle else dest
+            self.net.download(f"https://dw.uptodown.com/dwn/{dl_url.lstrip('/')}", out_path)
+            return DownloadResult(path=out_path, is_bundle=is_bundle)
+        except Exception as exc:
+            if isinstance(exc, UptodownError):
+                raise
+            raise UptodownError(f"Uptodown download failed: {exc}") from exc
 
     def _find_version_url(self, url: str, data_code: str, version: str) -> dict:
         url_clean = url.rstrip("/")
