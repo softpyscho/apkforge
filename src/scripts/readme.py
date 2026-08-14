@@ -124,7 +124,26 @@ def _load_patches_cache() -> dict[str, list[str]]:
     return {}
 
 
-def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: set[str] = None) -> str:
+def _load_excluded_patches_cache() -> dict[str, list[str]]:
+    """Load excluded patches cache from build.json or versions_info.json."""
+    for path_str in ("build.json", "versions_info.json"):
+        p = Path(path_str)
+        if p.exists():
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                if "excluded_patches" in data and data["excluded_patches"]:
+                    res = {}
+                    for k, v in data["excluded_patches"].items():
+                        table = k.split("(")[0].strip()
+                        res[table] = v
+                        res[k] = v
+                    return res
+            except (json.JSONDecodeError, OSError):
+                pass
+    return {}
+
+
+def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: set[str] = None, excluded_cache: dict[str, list[str]] = None) -> str:
     """Describe which patches are applied."""
     all_includes = []
     all_excludes = []
@@ -163,11 +182,25 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
         if options:
             options_str = "<br>⚙️ " + ", ".join(f"{k}={v}" for k, v in options)
 
+    excluded = (excluded_cache or {}).get(entry.table) or (excluded_cache or {}).get(entry.app_name) or []
+    if excluded:
+        applied.difference_update(excluded)
+
     if has_cache or (entry.exclusive_patches and all_includes):
         sorted_patches = sorted(applied, key=lambda x: x.lower())
         patch_list = "<br>".join(f"`{p}`" for p in sorted_patches)
-        summary = f"<summary><b>{len(sorted_patches)} patches</b></summary>"
-        result = f"<details>{summary}{patch_list}{options_str}</details>"
+        
+        excluded_str = ""
+        summary_warning = ""
+        if excluded:
+            ex_items = "<br>".join(f"⚠️ <s>`{p}`</s> *(excluded: build error)*" for p in sorted(set(excluded), key=lambda x: x.lower()))
+            excluded_str = (f"<br>{patch_list}" if patch_list else "") + f"<br>{ex_items}"
+            summary_warning = f" ({len(excluded)} excluded) ⚠️"
+        else:
+            excluded_str = f"<br>{patch_list}" if patch_list else ""
+
+        summary = f"<summary><b>{len(sorted_patches)} patches</b>{summary_warning}</summary>"
+        result = f"<details>{summary}{excluded_str}{options_str}</details>"
     else:
         result = f"*(Pending cache update)*{options_str}"
 
@@ -334,6 +367,7 @@ def generate_apps_section() -> str:
 
     patches_cache = _load_patches_cache()
     versions_cache, sources_cache = _load_build_cache()
+    excluded_cache = _load_excluded_patches_cache()
 
     # Group entries by patch source (ordered by first appearance)
     groups: OrderedDict[str, list] = OrderedDict()
@@ -397,7 +431,7 @@ def generate_apps_section() -> str:
             version = _version_label(entry, versions_cache)
             sources = _apk_sources_label(entry, sources_cache)
             general_patches = source_general_patches.get(source, set())
-            patches = _patches_label(entry, patches_cache, general_patches)
+            patches = _patches_label(entry, patches_cache, general_patches, excluded_cache)
             obtainium = _obtainium_link(entry)
 
             lines.append(f"| {badge_md} | {arch} | {version} | {sources} | {patches} | {obtainium} |")

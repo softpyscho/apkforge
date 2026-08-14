@@ -813,11 +813,26 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
                 log_lines.append(r["log"])
                 report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"], "source": r["source"]})
                 if r["excluded_patches"]:
+                    report_data["excluded_patches"][r["app"]] = r["excluded_patches"]
                     report_data["excluded_patches"][r["label"]] = r["excluded_patches"]
             else:
                 report_data["failed"].append({"app": r["app"], "label": r["label"], "error": r["error"]})
 
     Path("build.json").write_text(json.dumps(report_data, indent=2))
+    
+    # Also update versions_info.json
+    v_info_path = Path("versions_info.json")
+    v_data = {}
+    if v_info_path.exists():
+        try:
+            v_data = json.loads(v_info_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    v_data["success"] = report_data["success"]
+    if report_data["excluded_patches"]:
+        v_data["excluded_patches"] = report_data["excluded_patches"]
+    v_info_path.write_text(json.dumps(v_data, indent=2))
+
     Path("patches_info.json").write_text(json.dumps(_patches_info, indent=2))
 
     if not log_lines:

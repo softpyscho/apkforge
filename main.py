@@ -57,11 +57,12 @@ def _require_java(min_version: int = 21) -> None:
         abort(f"Java {version} found, but Java {min_version}+ is required")
 
 def _build(target_app: str | None = None, arch_override: str | None = None) -> int:
-    try:
-        from src.scripts.wa_version import update_config_toml
-        update_config_toml()
-    except Exception as exc:
-        epr(f"Warning: Could not auto-update WhatsApp versions from WaEnhancer: {exc}")
+    if not target_app or target_app in ("WhatsApp", "WhatsApp-Business"):
+        try:
+            from src.scripts.wa_version import update_config_toml
+            update_config_toml()
+        except Exception as exc:
+            epr(f"Warning: Could not auto-update WhatsApp versions from WaEnhancer: {exc}")
 
     data = load_toml(CONFIG_PATH)
     main_cfg = parse_config(data)

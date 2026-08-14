@@ -140,5 +140,10 @@
       "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
       "source": "uptodown"
     }
-  ]
+  ],
+  "excluded_patches": {
+    "Splitwise": [
+      "Unlock Pro"
+    ]
+  }
 }
