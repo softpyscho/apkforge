@@ -10,8 +10,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.08.10-df12d44def51",
-      "apk": "Duck.Detector-2026.08.10-df12d44def51.apk",
+      "version": "2026.08.13-fc94d5d30ebe",
+      "apk": "Duck.Detector-2026.08.13-fc94d5d30ebe.apk",
       "source": "github"
     },
     {
@@ -55,6 +55,13 @@
       "version": "6.38.8",
       "apk": "warp-morphe-v6.38.8-arm64-v8a.apk",
       "source": "apkmirror"
+    },
+    {
+      "app": "Stremio",
+      "label": "Stremio (arm64-v8a)",
+      "version": "2.3.2-android",
+      "apk": "stremio-mirror-v2.3.2-android-arm64-v8a.apk",
+      "source": "direct"
     },
     {
       "app": "Battery-Guru",
