@@ -142,12 +142,25 @@ badge-color = "4CAF50"
 badge-icon = "battery_charging_full"
 version = "latest"
 arch = "arm64-v8a"
-apkmirror-dlurl = "https://www.apkmirror.com/apk/paget96/battery-guru/"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/paget96/battery-guru-health-saver/"
 uptodown-dlurl = "https://battery-guru.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/battery-guru-battery-health/com.paget96.batteryguru"
 
 [Battery-Guru.patches]
 "github:arandomhooman/hoomans-morphe-patches" = { version = "dev" }
+
+[Alarmy]
+pkg-name = "droom.sleepIfUCan"
+badge-color = "1E88E5"
+badge-icon = "alarmy"
+version = "auto"
+arch = "arm64-v8a"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/sleep-tracker-alarm-clock-by-delightroom/alarmy-alarm-clock-sleep/"
+uptodown-dlurl = "https://alarmy.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.com/alarmy-alarm-clock-sleep/droom.sleepIfUCan"
+
+[Alarmy.patches]
+"github:rabilrbl/fluffy-patches" = []
 
 [Bitget]
 app-name = "Bitget"
@@ -158,6 +171,17 @@ pkg-name = "com.bitget.exchange"          # ← added
 apkmirror-dlurl = "https://www.apkmirror.com/apk/bg-limited/bitget-buy-sell-crypto/"
 uptodown-dlurl = "https://bitget.en.uptodown.com/android"
 apkpure-dlurl   = "https://apkpure.com/bitget/com.bitget.exchange"
+
+[Stremio]
+app-name = "Stremio"
+mirror = true
+version = "latest"
+arch = "arm64-v8a"
+pkg-name = "com.stremio.one"
+direct-dlurl = "https://www.stremio.com/downloads"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/stremio/stremio-2/"
+uptodown-dlurl = "https://stremio-one.en.uptodown.com/android"
+apkpure-dlurl = "https://apkpure.com/stremio-app/com.stremio.one"
 
 [Mixplorer]
 app-name = "Mixplorer"
@@ -178,17 +202,6 @@ pkg-name = "com.mixplorer.addon.archive"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/hootan-parsa/mix-archive/"
 uptodown-dlurl = "https://mix-archive.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/mix-archive/com.mixplorer.addon.archive"
-
-[Stremio]
-app-name = "Stremio"
-mirror = true
-version = "latest"
-arch = "arm64-v8a"
-pkg-name = "com.stremio.one"
-direct-dlurl = "https://www.stremio.com/downloads"
-apkmirror-dlurl = "https://www.apkmirror.com/apk/stremio/stremio-2/"
-uptodown-dlurl = "https://stremio-one.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/stremio-app/com.stremio.one"
 
 [RedotPay]
 app-name = "RedotPay"
@@ -215,6 +228,7 @@ mirror = true
 version = "2.26.30.xx"
 arch = "arm64-v8a"
 pkg-name = "com.whatsapp"
+direct-dlurl = "https://www.whatsapp.com/android/"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
 uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"

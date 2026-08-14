@@ -60,6 +60,7 @@ def update_config_toml() -> None:
         f'version = "{wpp_ver}"\n'
         f'arch = "arm64-v8a"\n'
         f'pkg-name = "com.whatsapp"\n'
+        f'direct-dlurl = "https://www.whatsapp.com/android/"\n'
         f'apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"\n'
         f'uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"\n'
         f'apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"'

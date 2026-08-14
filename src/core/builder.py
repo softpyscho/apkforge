@@ -303,6 +303,18 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     return version, is_custom
 
 
+def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
+    """Delete outdated APK versions for pkg_name once a build has successfully completed."""
+    if not pkg_name:
+        return
+    version_f = keep_version.replace(" ", "").lstrip("v")
+    for old_file in ORIGINAL_APK_DIR.iterdir():
+        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig", ".src")):
+            if f"-v{version_f}-" not in old_file.name:
+                pr(f"Deleting outdated APK version: {old_file.name}")
+                old_file.unlink(missing_ok=True)
+
+
 def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str]) -> DownloadResult:
     arch_f = arch.replace(" ", "")
     version_f = version.replace(" ", "").lstrip("v")
@@ -331,13 +343,6 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
         if orig_meta.exists():
             orig_name = orig_meta.read_text(encoding="utf-8").strip()
         return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name, source_used=_read_src(stock_apkm))
-
-    # Cleanup old versions of this specific package before downloading the new one
-    for old_file in ORIGINAL_APK_DIR.iterdir():
-        if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig", ".src")):
-            if f"-v{version_f}-" not in old_file.name:  # Don't delete other architectures of the current version
-                pr(f"Deleting outdated APK version: {old_file.name}")
-                old_file.unlink(missing_ok=True)
 
     ordered_sources = [s for s in entry.dl_urls if s not in failed_sources]
     if dl_from in ordered_sources:
@@ -601,6 +606,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 apk_name = f"{base_name}-v{version_f}-{arch_f}.apk"
             apk_output = BUILD_DIR / apk_name
             shutil.copy(dl_result.path, apk_output)
+            _cleanup_outdated_apks(pkg_name, keep_version=version, arch=arch)
             excluded_patches = []
             
             pr(f"Mirrored {label}: '{apk_output}'")
@@ -613,26 +619,82 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         excluded_patches = []
         max_retries = 5
         apk_output = None
+        patch_success = False
+        last_patch_exc = None
         
         for attempt in range(max_retries):
             try:
                 apk_output = _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches)
+                patch_success = True
                 break
             except (PatcherError, BuilderError) as exc:
+                last_patch_exc = exc
                 clean_exc = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
                 match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
                 
                 if match:
                     failed_patch = match.group(1).strip()
                     if failed_patch in excluded_patches:
-                        raise BuilderError(f"Patch '{failed_patch}' failed again after being excluded.")
+                        last_patch_exc = BuilderError(f"Patch '{failed_patch}' failed again after being excluded.")
+                        break
                         
                     wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
                     excluded_patches.append(failed_patch)
                 else:
-                    raise  
-        else:
-            raise BuilderError(f"Failed to patch '{label}' after {max_retries} attempts.")
+                    break
+
+        if not patch_success:
+            # Fallback to old cached stock APK if available when patching a new version fails
+            version_f = version.replace(" ", "").lstrip("v")
+            other_cached = []
+            if pkg_name:
+                for cached_file in ORIGINAL_APK_DIR.iterdir():
+                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
+                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
+                        if m_ver:
+                            c_ver = m_ver.group(1)
+                            if c_ver != version_f:
+                                other_cached.append(c_ver)
+
+            if other_cached:
+                fallback_ver = get_highest_ver(other_cached)
+                wpr(f"Patching '{label}' (v{version}) failed: {last_patch_exc}. Falling back to old cached APK version '{fallback_ver}'...")
+                
+                try:
+                    dl_result_fallback = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
+                    if dl_result_fallback.is_bundle:
+                        opt_bundle = TEMP_DIR / f"lean_{dl_result_fallback.path.name}"
+                        _optimize_bundle(dl_result_fallback.path, opt_bundle, arch)
+                        dl_result_fallback = DownloadResult(path=opt_bundle, is_bundle=True, source_used=dl_result_fallback.source_used)
+                    
+                    version = fallback_ver
+                    force = True
+                    dl_result = dl_result_fallback
+                    excluded_patches = []
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            apk_output = _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches)
+                            patch_success = True
+                            break
+                        except (PatcherError, BuilderError) as exc:
+                            clean_exc = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
+                            match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
+                            if match:
+                                failed_patch = match.group(1).strip()
+                                if failed_patch in excluded_patches:
+                                    break
+                                wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
+                                excluded_patches.append(failed_patch)
+                            else:
+                                break
+                except Exception as fb_exc:
+                    epr(f"Fallback attempt on cached version '{fallback_ver}' failed: {fb_exc}")
+
+        if not patch_success:
+            raise BuilderError(f"Failed to patch '{label}': {last_patch_exc}")
+
+        _cleanup_outdated_apks(pkg_name, keep_version=version, arch=arch)
 
         pr(f"Built {label}: '{apk_output}'")
         github_asset_name = re.sub(r"\.+", ".", re.sub(r"[^a-zA-Z0-9@+\-_.]", ".", apk_output.name))

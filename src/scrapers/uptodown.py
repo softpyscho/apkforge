@@ -29,9 +29,15 @@ class UptodownScraper(BaseScraper):
         super().__init__(net)
         self._versions_cache: dict[str, str] = {}
 
+    def _get_versions_html(self, url_clean: str) -> str:
+        try:
+            return self.net.get(f"{url_clean}/versions")
+        except Exception:
+            return self.net.get(url_clean)
+
     def fetch_metadata(self, url: str) -> AppMetadata:
         url_clean = url.rstrip("/")
-        versions_html = self.net.get(f"{url_clean}/versions")
+        versions_html = self._get_versions_html(url_clean)
         self._versions_cache[url] = versions_html
         pkg_html = self.net.get(f"{url_clean}/download")
         soup_pkg = _parse_html(pkg_html)
@@ -47,7 +53,7 @@ class UptodownScraper(BaseScraper):
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
         url_clean = url.rstrip("/")
-        versions_html = self._versions_cache.get(url) or self.net.get(f"{url_clean}/versions")
+        versions_html = self._versions_cache.get(url) or self._get_versions_html(url_clean)
         self._versions_cache[url] = versions_html
 
         apparch: set[str] = set(_DEFAULT_ARCH)
