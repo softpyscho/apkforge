@@ -107,8 +107,17 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
         ver = get_highest_ver([r["tag_name"] for r in releases if r.get("tag_name")])
     elif ver == "latest":
         latest_url = f"{base_url}/permalink/latest" if gitlab else f"{base_url}/latest"
-        release = json.loads(net.get(latest_url) if gitlab else net.get(latest_url, headers=net._gh_headers))
-        ver = release.get("tag_name", "")
+        try:
+            release = json.loads(net.get(latest_url) if gitlab else net.get(latest_url, headers=net._gh_headers))
+            ver = release.get("tag_name", "")
+        except Exception:
+            if not gitlab:
+                releases = json.loads(net.get(f"{base_url}?per_page=1", headers=net._gh_headers))
+                if isinstance(releases, list) and releases:
+                    release = releases[0]
+                    ver = release.get("tag_name", "")
+            if not release:
+                raise
 
     if file := _find_cached(cl_dir, ver, ext):
         tag_name = _tag_from_filename(file)

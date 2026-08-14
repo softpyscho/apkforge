@@ -644,7 +644,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                     break
 
         if not patch_success:
-            # Fallback to old cached stock APK if available when patching a new version fails
+            # Fallback to old cached stock APK or lower online version when patching a new version fails
             version_f = version.replace(" ", "").lstrip("v")
             other_cached = []
             if pkg_name:
@@ -656,10 +656,26 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                             if c_ver != version_f:
                                 other_cached.append(c_ver)
 
+            fallback_ver = None
             if other_cached:
                 fallback_ver = get_highest_ver(other_cached)
                 wpr(f"Patching '{label}' (v{version}) failed: {last_patch_exc}. Falling back to old cached APK version '{fallback_ver}'...")
-                
+            elif entry.version in ("auto", "latest"):
+                fallback_order = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
+                for src in fallback_order:
+                    if src in failed_sources:
+                        continue
+                    try:
+                        versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
+                        lower_vers = _get_versions_below(versions, version)
+                        if lower_vers:
+                            fallback_ver = lower_vers[0]
+                            wpr(f"Patching '{label}' (v{version}) failed: {last_patch_exc}. Falling back to lower online version '{fallback_ver}' from '{src}'...")
+                            break
+                    except Exception:
+                        continue
+
+            if fallback_ver:
                 try:
                     dl_result_fallback = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
                     if dl_result_fallback.is_bundle:
@@ -689,7 +705,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                             else:
                                 break
                 except Exception as fb_exc:
-                    epr(f"Fallback attempt on cached version '{fallback_ver}' failed: {fb_exc}")
+                    epr(f"Fallback attempt on version '{fallback_ver}' failed: {fb_exc}")
 
         if not patch_success:
             raise BuilderError(f"Failed to patch '{label}': {last_patch_exc}")

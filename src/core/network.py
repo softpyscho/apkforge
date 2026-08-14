@@ -61,7 +61,7 @@ class NetworkManager:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
         })
-        token = os.getenv("GITHUB_TOKEN")
+        token = (os.getenv("GITHUB_TOKEN") or "").strip()
         self._gh_headers: dict[str, str] = {"Authorization": f"token {token}"} if token else {}
         self._domain_locks: dict[str, threading.Lock] = {}
         self._domain_mu = threading.Lock()
@@ -71,11 +71,17 @@ class NetworkManager:
     def get(self, url: str, headers: dict[str, str] | None = None) -> str:
         netloc = urlparse(url).netloc
         last_exc: Exception | None = None
+        req_headers = dict(headers) if headers else None
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             try:
                 with _get_lock(self._domain_locks, self._domain_mu, netloc):
                     time.sleep(0.5)
-                    resp = self.session.get(url, timeout=(5, 10), allow_redirects=True, headers=headers, verify=True)
+                    resp = self.session.get(url, timeout=(5, 10), allow_redirects=True, headers=req_headers, verify=True)
+
+                if resp.status_code == 401 and req_headers and "Authorization" in req_headers:
+                    req_headers.pop("Authorization", None)
+                    with _get_lock(self._domain_locks, self._domain_mu, netloc):
+                        resp = self.session.get(url, timeout=(5, 10), allow_redirects=True, headers=req_headers, verify=True)
 
                 if _handle_status(resp, url, attempt):
                     _retry_sleep(attempt)
@@ -101,11 +107,17 @@ class NetworkManager:
             tmp.unlink(missing_ok=True)
             netloc = urlparse(url).netloc
             last_exc: Exception | None = None
+            req_headers = dict(headers) if headers else None
             for attempt in range(1, _MAX_ATTEMPTS + 1):
                 try:
                     with _get_lock(self._domain_locks, self._domain_mu, netloc):
                         time.sleep(0.5)
-                        resp = self.session.get(url, timeout=(5, 300), stream=True, allow_redirects=True, headers=headers, verify=True)
+                        resp = self.session.get(url, timeout=(5, 300), stream=True, allow_redirects=True, headers=req_headers, verify=True)
+
+                    if resp.status_code == 401 and req_headers and "Authorization" in req_headers:
+                        req_headers.pop("Authorization", None)
+                        with _get_lock(self._domain_locks, self._domain_mu, netloc):
+                            resp = self.session.get(url, timeout=(5, 300), stream=True, allow_redirects=True, headers=req_headers, verify=True)
 
                     if _handle_status(resp, url, attempt):
                         _retry_sleep(attempt)
