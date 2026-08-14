@@ -459,7 +459,7 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     
     dynamic_args = list(entry.patcher_args)
     for p in excluded_patches:
-        dynamic_args.extend(["-e", p])
+        dynamic_args.extend(["-d", p])
         
     final_args = patcher.build_patch_args(patches=entry.patches, extra_args=dynamic_args, arch=arch, auto_patches=auto_patches, exclusive=entry.exclusive_patches, force=force)
     base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
