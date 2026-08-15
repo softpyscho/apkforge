@@ -1,45 +1,17 @@
 {
   "success": [
     {
-      "app": "WhatsApp",
-      "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.32.70",
-      "apk": "whatsapp-mirror-v2.26.32.70-arm64-v8a.apk",
-      "source": "direct"
+      "app": "WhatsApp-Business",
+      "label": "WhatsApp Business (arm64-v8a)",
+      "version": "2.26.30.85",
+      "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
+      "source": "uptodown"
     },
     {
-      "app": "Duck-Detector",
-      "label": "Duck Detector",
-      "version": "2026.08.13-fc94d5d30ebe",
-      "apk": "Duck.Detector-2026.08.13-fc94d5d30ebe.apk",
-      "source": "github"
-    },
-    {
-      "app": "Mixplorer",
-      "label": "Mixplorer (arm64-v8a)",
-      "version": "6.71.10",
-      "apk": "mixplorer-mirror-v6.71.10-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Instagram",
-      "label": "Instagram (arm64-v8a)",
-      "version": "439.0.0.37.89",
-      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk",
-      "source": "github"
-    },
-    {
-      "app": "Xodo",
-      "label": "Xodo (arm64-v8a)",
-      "version": "10.17.1",
-      "apk": "xodo-morphe-v10.17.1-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Amazon-Prime-Video",
-      "label": "Amazon Prime Video (arm64-v8a)",
-      "version": "3.0.452.1047",
-      "apk": "amazon-prime-video-morphe-v3.0.452.1047-arm64-v8a.apk",
+      "app": "Reddit",
+      "label": "Reddit (arm64-v8a)",
+      "version": "2026.14.0",
+      "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
@@ -50,17 +22,45 @@
       "source": "apkmirror"
     },
     {
-      "app": "WARP",
-      "label": "WARP (arm64-v8a)",
-      "version": "6.38.8",
-      "apk": "warp-morphe-v6.38.8-arm64-v8a.apk",
-      "source": "apkmirror"
+      "app": "RedotPay",
+      "label": "RedotPay (arm64-v8a)",
+      "version": "3.12.0",
+      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
+      "source": "direct"
+    },
+    {
+      "app": "Stremio",
+      "label": "Stremio (arm64-v8a)",
+      "version": "2.3.2-android",
+      "apk": "stremio-mirror-v2.3.2-android-arm64-v8a.apk",
+      "source": "direct"
+    },
+    {
+      "app": "WhatsApp",
+      "label": "WhatsApp (arm64-v8a)",
+      "version": "2.26.32.76",
+      "apk": "whatsapp-mirror-v2.26.32.76-arm64-v8a.apk",
+      "source": "direct"
+    },
+    {
+      "app": "Duck-Detector",
+      "label": "Duck Detector",
+      "version": "2026.08.15-fd211f8df1bf",
+      "apk": "Duck.Detector-2026.08.15-fd211f8df1bf.apk",
+      "source": "github"
     },
     {
       "app": "Alarmy",
       "label": "Alarmy (arm64-v8a)",
       "version": "26.23.0",
       "apk": "alarmy-morphe-v26.23.0-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Truecaller",
+      "label": "Truecaller (arm64-v8a)",
+      "version": "26.10.6",
+      "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
@@ -71,20 +71,6 @@
       "source": "uptodown"
     },
     {
-      "app": "Mix-Archive",
-      "label": "Mix Archive (arm64-v8a)",
-      "version": "3.21",
-      "apk": "mix-archive-mirror-v3.21-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "WhatsApp-Business",
-      "label": "WhatsApp Business (arm64-v8a)",
-      "version": "2.26.30.85",
-      "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
-      "source": "uptodown"
-    },
-    {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.7.1-release.0",
@@ -92,11 +78,39 @@
       "source": "apkmirror"
     },
     {
-      "app": "Reddit",
-      "label": "Reddit (arm64-v8a)",
-      "version": "2026.14.0",
-      "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
+      "app": "Mixplorer",
+      "label": "Mixplorer (arm64-v8a)",
+      "version": "6.71.10",
+      "apk": "mixplorer-mirror-v6.71.10-arm64-v8a.apk",
       "source": "apkmirror"
+    },
+    {
+      "app": "Bitget",
+      "label": "Bitget (arm64-v8a)",
+      "version": "2.90.1",
+      "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
+      "source": "uptodown"
+    },
+    {
+      "app": "Xodo",
+      "label": "Xodo (arm64-v8a)",
+      "version": "10.17.1",
+      "apk": "xodo-morphe-v10.17.1-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "WARP",
+      "label": "WARP (arm64-v8a)",
+      "version": "6.38.8",
+      "apk": "warp-morphe-v6.38.8-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Instagram",
+      "label": "Instagram (arm64-v8a)",
+      "version": "439.0.0.37.89",
+      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk",
+      "source": "github"
     },
     {
       "app": "Splitwise",
@@ -106,25 +120,11 @@
       "source": "apkmirror"
     },
     {
-      "app": "Stremio",
-      "label": "Stremio (arm64-v8a)",
-      "version": "2.3.2-android",
-      "apk": "stremio-mirror-v2.3.2-android-arm64-v8a.apk",
-      "source": "direct"
-    },
-    {
-      "app": "Truecaller",
-      "label": "Truecaller (arm64-v8a)",
-      "version": "26.10.6",
-      "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk",
+      "app": "Mix-Archive",
+      "label": "Mix Archive (arm64-v8a)",
+      "version": "3.21",
+      "apk": "mix-archive-mirror-v3.21-arm64-v8a.apk",
       "source": "apkmirror"
-    },
-    {
-      "app": "RedotPay",
-      "label": "RedotPay (arm64-v8a)",
-      "version": "3.12.0",
-      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
-      "source": "direct"
     },
     {
       "app": "TickTick",
@@ -134,11 +134,11 @@
       "source": "apkmirror"
     },
     {
-      "app": "Bitget",
-      "label": "Bitget (arm64-v8a)",
-      "version": "2.90.1",
-      "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
-      "source": "uptodown"
+      "app": "Amazon-Prime-Video",
+      "label": "Amazon Prime Video (arm64-v8a)",
+      "version": "3.0.452.1047",
+      "apk": "amazon-prime-video-morphe-v3.0.452.1047-arm64-v8a.apk",
+      "source": "apkmirror"
     }
   ]
 }
