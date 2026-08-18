@@ -38,15 +38,15 @@
     {
       "app": "WhatsApp",
       "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.32.76",
-      "apk": "whatsapp-mirror-v2.26.32.76-arm64-v8a.apk",
+      "version": "2.26.32.80",
+      "apk": "whatsapp-mirror-v2.26.32.80-arm64-v8a.apk",
       "source": "direct"
     },
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.08.17-391df7d563bf",
-      "apk": "Duck.Detector-2026.08.17-391df7d563bf.apk",
+      "version": "2026.08.18-75e575d7ae6b",
+      "apk": "Duck.Detector-2026.08.18-75e575d7ae6b.apk",
       "source": "github"
     },
     {
@@ -89,13 +89,13 @@
       "label": "Bitget (arm64-v8a)",
       "version": "2.90.1",
       "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
-      "source": "uptodown"
+      "source": "apkmirror"
     },
     {
       "app": "Xodo",
       "label": "Xodo (arm64-v8a)",
-      "version": "10.17.1",
-      "apk": "xodo-morphe-v10.17.1-arm64-v8a.apk",
+      "version": "11.0.0",
+      "apk": "xodo-morphe-v11.0.0-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
