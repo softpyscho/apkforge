@@ -5,7 +5,7 @@
       "label": "WhatsApp Business (arm64-v8a)",
       "version": "2.26.30.85",
       "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
-      "source": "uptodown"
+      "source": "apkmirror"
     },
     {
       "app": "Reddit",
