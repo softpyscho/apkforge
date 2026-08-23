@@ -1,25 +1,25 @@
 {
   "success": [
     {
-      "app": "WhatsApp",
-      "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.33.72",
-      "apk": "whatsapp-mirror-v2.26.33.72-arm64-v8a.apk",
-      "source": "direct"
+      "app": "Mix-Archive",
+      "label": "Mix Archive (arm64-v8a)",
+      "version": "3.24",
+      "apk": "mix-archive-mirror-v3.24-arm64-v8a.apk",
+      "source": "apkmirror"
     },
     {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.7.1-release.0",
       "apk": "twitter-morphe-v12.7.1-release.0-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "Mixplorer",
       "label": "Mixplorer (arm64-v8a)",
       "version": "6.71.10",
       "apk": "mixplorer-mirror-v6.71.10-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "Battery-Guru",
@@ -29,11 +29,11 @@
       "source": "apkmirror"
     },
     {
-      "app": "Mix-Archive",
-      "label": "Mix Archive (arm64-v8a)",
-      "version": "3.24",
-      "apk": "mix-archive-mirror-v3.24-arm64-v8a.apk",
-      "source": "apkmirror"
+      "app": "WhatsApp",
+      "label": "WhatsApp (arm64-v8a)",
+      "version": "2.26.33.72",
+      "apk": "whatsapp-mirror-v2.26.33.72-arm64-v8a.apk",
+      "source": "direct"
     },
     {
       "app": "Stremio",
@@ -68,7 +68,7 @@
       "label": "TickTick (arm64-v8a)",
       "version": "8.1.3.3",
       "apk": "ticktick-morphe-v8.1.3.3-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "Bitget",
@@ -96,7 +96,7 @@
       "label": "Greenify (arm64-v8a)",
       "version": "5.1.1",
       "apk": "greenify-morphe-v5.1.1-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "Xodo",
@@ -110,7 +110,7 @@
       "label": "Reddit (arm64-v8a)",
       "version": "2026.14.0",
       "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "RedotPay",
@@ -131,7 +131,7 @@
       "label": "WARP (arm64-v8a)",
       "version": "6.38.8",
       "apk": "warp-morphe-v6.38.8-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "WhatsApp-Business",
