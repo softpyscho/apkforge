@@ -44,7 +44,8 @@ class APKMirrorScraper(BaseScraper):
             text = a.get_text(strip=True)
             if "beta" in text.lower() or "alpha" in text.lower():
                 continue
-            v = text.split()[-1]
+            m_ver = re.search(r"(\d+\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9.]+)?)\b", text)
+            v = m_ver.group(1) if m_ver else text.split()[-1]
             self._release_urls[v] = urljoin("https://www.apkmirror.com", a["href"])
             versions.append(v)
         return AppMetadata(pkg_name=m.group(1), versions=versions)
@@ -77,11 +78,20 @@ class APKMirrorScraper(BaseScraper):
             is_bundle = dl_url[1] == "BUNDLE"
 
         soup_dl = _parse_html(release_html)
-        btn = soup_dl.select_one("a.btn")
+        btn = soup_dl.select_one("a.downloadButton, a.btn, a[href*='download/']")
+        if not btn or not btn.get("href"):
+            raise APKMirrorError("Download button not found on release page")
+
         btn_url = urljoin("https://www.apkmirror.com", btn["href"])
-        soup_final = _parse_html(self.net.get(btn_url))
-        dl_link = soup_final.select_one("span > a[rel=nofollow]")
-        final_url = urljoin("https://www.apkmirror.com", dl_link["href"])
+        final_url = btn_url
+        try:
+            soup_final = _parse_html(self.net.get(btn_url))
+            dl_link = soup_final.select_one("span > a[rel=nofollow], a.downloadButton, a[href*='download/?key='], a[href*='download.php']")
+            if dl_link and dl_link.get("href"):
+                final_url = urljoin("https://www.apkmirror.com", dl_link["href"])
+        except Exception:
+            pass
+
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
         self.net.download(final_url, out_path)
         return DownloadResult(path=out_path, is_bundle=is_bundle)

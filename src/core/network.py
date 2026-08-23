@@ -46,12 +46,11 @@ def _handle_status(resp, url: str, attempt: int) -> bool:
         raise ResourceNotFoundError(f"Not found (404): {url}")
 
     if resp.status_code in (403, 410, 429) or resp.status_code >= 500:
-        # Check for Cloudflare Turnstile challenge on APKMirror
+        # Check for Cloudflare Turnstile challenge
         is_cf = "cloudflare" in str(resp.headers.get("server", "")).lower() and ("just a moment" in resp.text.lower() or "challenge-platform" in resp.text.lower())
         if resp.status_code == 403 and is_cf:
-            if attempt == 1:
-                epr(f"Cloudflare challenge encountered for {url}. Provide CF_CLEARANCE / APKMIRROR_COOKIE to bypass.")
-            return False  # Fail fast on Cloudflare challenges to allow quick scraper fallback
+            epr(f"Cloudflare challenge encountered for {url}. Provide CF_CLEARANCE / APKMIRROR_COOKIE to bypass.")
+            raise NetworkError(f"Cloudflare challenge (403) for {url}")
 
         epr(f"HTTP {resp.status_code} for {url}, attempt {attempt}/{_MAX_ATTEMPTS}")
         return True

@@ -255,6 +255,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
+        version = ""
         sources_to_try = [s for s in ["apkmirror", dl_from] if s in entry.dl_urls] + [s for s in entry.dl_urls if s not in ("apkmirror", dl_from)]
         seen = set()
         sources_to_try = [s for s in sources_to_try if not (s in seen or seen.add(s))]
@@ -552,7 +553,9 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                                 dl_result_fallback = _download_apk(entry, candidate_ver, arch, pkg_name, scrapers, src, failed_sources)
                                 fallback_version = candidate_ver
                                 break
-                            except BuilderError: continue
+                            except BuilderError:
+                                failed_sources.add(src)
+                                break
                         if dl_result_fallback: break
                     except Exception:
                         failed_sources.add(src)
@@ -570,7 +573,8 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                                     dl_result_fallback = _download_apk(entry, highest_ver, arch, pkg_name, scrapers, src, failed_sources)
                                     fallback_version = highest_ver
                                     break
-                                except BuilderError: continue
+                                except BuilderError:
+                                    failed_sources.add(src)
                         except Exception:
                             failed_sources.add(src)
 

@@ -208,7 +208,6 @@ version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.mixplorer.addon.archive"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/hootan-parsa/mix-archive/"
-uptodown-dlurl = "https://mix-archive.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/mix-archive/com.mixplorer.addon.archive"
 
 [RedotPay]
