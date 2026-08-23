@@ -65,8 +65,7 @@ def update_config_toml() -> bool:
         f'pkg-name = "com.whatsapp"\n'
         f'apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"\n'
         f'uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"\n'
-        f'apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"\n'
-        f'direct-dlurl = "https://www.whatsapp.com/android/"'
+        f'apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"'
     )
 
     # WhatsApp Business entry

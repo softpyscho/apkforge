@@ -127,7 +127,8 @@ def _check_app_needs_update(
                 if highest and _is_newer_version(highest, prev_version):
                     pr(f"[*] {entry.table} newer version '{highest}' available (prev: '{prev_version}') -> update needed.")
                     return True
-                break
+                if matching:
+                    break
             except Exception:
                 continue
         return False

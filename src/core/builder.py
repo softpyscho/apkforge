@@ -262,7 +262,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
                 if is_wildcard:
                     matching = [v for v in versions if v.startswith(f"{prefix}.")]
-                    version = get_highest_ver(matching) if matching else (get_highest_ver(versions) if versions else "")
+                    version = get_highest_ver(matching) if matching else ""
                 else:
                     version = get_highest_ver(versions) if versions else ""
                 if version:
@@ -282,7 +282,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
             if cached_vers:
                 version = get_highest_ver(cached_vers)
                 pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
-            elif pkg_name:
+            elif pkg_name and not is_wildcard:
                 for cached_file in ORIGINAL_APK_DIR.iterdir():
                     if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                         m_ver = re.search(r"-v([^-]+)-", cached_file.name)
