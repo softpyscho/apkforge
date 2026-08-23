@@ -88,9 +88,29 @@ class APKPureScraper(BaseScraper):
         """
         Navigates the download pages and fetches the actual APK/XAPK file.
         """
+        if not self._version_urls:
+            try:
+                self.fetch_metadata(url)
+            except Exception:
+                pass
+
         release_url = self._version_urls.get(version)
+        if release_url is None:
+            for v, u in self._version_urls.items():
+                if v.startswith(version) or version.startswith(v):
+                    release_url = u
+                    break
         
         if release_url is None:
+            pkg = self._package_name
+            if not pkg:
+                m = re.search(r'/([^/]+)$', url)
+                pkg = m.group(1) if m else ""
+            if pkg:
+                fallback_url = f"https://d.apkpure.com/b/APK/{pkg}?version=latest"
+                out_path = dest.with_suffix(".apk")
+                self.net.download(fallback_url, out_path)
+                return DownloadResult(path=out_path, is_bundle=False)
             raise APKPureError(f"Version {version} not found in the scraped list")
 
         try:
