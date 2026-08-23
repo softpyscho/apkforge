@@ -211,7 +211,9 @@ def _app_badge(entry) -> str:
     """Generate a clean shield badge for the app linking to Play Store."""
     name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
     encoded_name = urllib.parse.quote(name.replace("-", "--"), safe="")
-    badge_url = f"https://img.shields.io/badge/{encoded_name}-{entry.badge_color}?style=flat-square&logo={entry.badge_icon}&logoColor=%23FFFFFF"
+    color = entry.badge_color if entry.badge_color else "3e9cfb"
+    logo_param = f"&logo={entry.badge_icon}" if entry.badge_icon else ""
+    badge_url = f"https://img.shields.io/badge/{encoded_name}-{color}?style=flat-square{logo_param}&logoColor=%23FFFFFF"
     
     if entry.pkg_name:
         return f"[![{name}]({badge_url})](https://play.google.com/store/apps/details?id={entry.pkg_name})"

@@ -165,9 +165,11 @@ apkpure-dlurl = "https://apkpure.com/alarmy-alarm-clock-sleep/droom.sleepIfUCan"
 [Bitget]
 app-name = "Bitget"
 mirror = true
+badge-color = "00F0FF"
+badge-icon = "android"
 version = "latest"
 arch = "arm64-v8a"
-pkg-name = "com.bitget.exchange"          # ← added
+pkg-name = "com.bitget.exchange"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/bg-limited/bitget-buy-sell-crypto/"
 uptodown-dlurl = "https://bitget.en.uptodown.com/android"
 apkpure-dlurl   = "https://apkpure.com/bitget/com.bitget.exchange"
@@ -175,6 +177,8 @@ apkpure-dlurl   = "https://apkpure.com/bitget/com.bitget.exchange"
 [Stremio]
 app-name = "Stremio"
 mirror = true
+badge-color = "6C5CE7"
+badge-icon = "stremio"
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.stremio.one"
@@ -186,6 +190,8 @@ apkpure-dlurl = "https://apkpure.com/stremio-app/com.stremio.one"
 [Mixplorer]
 app-name = "Mixplorer"
 mirror = true
+badge-color = "FF6F00"
+badge-icon = "android"
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.mixplorer"
@@ -196,6 +202,8 @@ apkpure-dlurl = "https://apkpure.com/mixplorer/com.mixplorer"
 [Mix-Archive]
 app-name = "Mix Archive"
 mirror = true
+badge-color = "FF6F00"
+badge-icon = "android"
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.mixplorer.addon.archive"
@@ -206,6 +214,8 @@ apkpure-dlurl = "https://apkpure.com/mix-archive/com.mixplorer.addon.archive"
 [RedotPay]
 app-name = "RedotPay"
 mirror = true
+badge-color = "E50914"
+badge-icon = "android"
 version = "latest"
 arch = "arm64-v8a"
 pkg-name = "com.redotpay"
@@ -216,6 +226,8 @@ apkpure-dlurl = "https://apkpure.com/redotpay-wallet-buy-btc/com.redotpay"
 [Duck-Detector]
 app-name = "Duck Detector"
 mirror = true
+badge-color = "FF9900"
+badge-icon = "android"
 keep-filename = true
 version = "nightly"
 arch = "all"
@@ -225,18 +237,20 @@ github-dlurl = "https://github.com/eltavine/Duck-Detector-Refactoring/releases/t
 [WhatsApp]
 app-name = "WhatsApp"
 mirror = true
-version = "2.26.30.xx"
+badge-color = "25D366"
+badge-icon = "whatsapp"
+version = "2.26.32.xx"
 arch = "arm64-v8a"
 pkg-name = "com.whatsapp"
-direct-dlurl = "https://www.whatsapp.com/android/"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
 uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
 apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"
-
 [WhatsApp-Business]
 app-name = "WhatsApp Business"
 mirror = true
-version = "2.26.30.xx"
+badge-color = "25D366"
+badge-icon = "whatsapp"
+version = "2.26.32.xx"
 arch = "arm64-v8a"
 pkg-name = "com.whatsapp.w4b"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/"

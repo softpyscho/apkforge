@@ -1,8 +1,27 @@
 name: Build APKs
 on:
   workflow_dispatch:
+    inputs:
+      apps:
+        description: 'Specific apps to build (comma-separated, e.g. "WhatsApp,Reddit")'
+        required: false
+        type: string
+        default: ''
+      force_build:
+        description: 'Build all apps (skip update check)'
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
+      apps:
+        required: false
+        type: string
+        default: ''
+      force_build:
+        required: false
+        type: boolean
+        default: false
       filter_changelog:
         default: false
         type: boolean
@@ -52,6 +71,8 @@ jobs:
       - name: Set matrix based on release group
         id: set-matrix
         env:
+          APPS_INPUT: ${{ inputs.apps }}
+          FORCE_BUILD: ${{ inputs.force_build }}
           FILTER_CHANGELOG: ${{ inputs.filter_changelog }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -236,9 +257,8 @@ jobs:
           mkdir -p logs patches versions
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "build-*.md" --dir logs
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "patches_info-*.json" --dir patches || true
-          uv run python -c "import json, glob, pathlib; merged = {}; [merged.update(json.loads(pathlib.Path(f).read_text())) for f in glob.glob('patches/*.json')]; pathlib.Path('patches_info.json').write_text(json.dumps(merged, indent=2))"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "versions_info-*.json" --dir versions || true
-          uv run python -c "import json, glob, pathlib; merged = {'success':[]}; [merged['success'].extend(json.loads(pathlib.Path(f).read_text()).get('success', [])) for f in glob.glob('versions/*.json')]; pathlib.Path('versions_info.json').write_text(json.dumps(merged, indent=2))"
+          uv run python -c "import json, glob, pathlib; curr = {'success':[]}; [curr['success'].extend(json.loads(pathlib.Path(f).read_text()).get('success', [])) for f in glob.glob('versions/*.json')]; pathlib.Path('current_versions.json').write_text(json.dumps(curr, indent=2))"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name | startswith("build-") or startswith("patches_info-") or startswith("versions_info-")) | .apiUrl' | xargs -I{} gh api --method DELETE "{}"
 
       - name: Combine logs and finalize release
@@ -248,7 +268,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.version }}
           PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
-          uv run python -m src.scripts.logs combine-logs logs | sed "s/{TAG}/$TAG/g" > final.md
+          uv run python -m src.scripts.logs combine-logs logs current_versions.json | sed "s/{TAG}/$TAG/g" > final.md
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --title "$TAG" --notes-file final.md
 
       - name: Send Telegram notification
@@ -268,9 +288,11 @@ jobs:
       - name: Update patches info and README
         if: steps.check.outputs.has_apks == 'true'
         run: |
+          uv run python -c "import json, pathlib; main_p = pathlib.Path('versions_info.json'); main_d = json.loads(main_p.read_text()) if main_p.exists() else {'success':[]}; curr_d = json.loads(pathlib.Path('current_versions.json').read_text()); curr_apps = {i['app'] for i in curr_d.get('success', []) if 'app' in i}; merged = [i for i in main_d.get('success', []) if i.get('app') not in curr_apps] + curr_d.get('success', []); main_d['success'] = merged; main_p.write_text(json.dumps(main_d, indent=2))"
+          uv run python -c "import json, glob, pathlib; p_path = pathlib.Path('patches_info.json'); p_data = json.loads(p_path.read_text()) if p_path.exists() else {}; [p_data.update(json.loads(pathlib.Path(f).read_text())) for f in glob.glob('patches/*.json')]; p_path.write_text(json.dumps(p_data, indent=2))"
           uv run python -m src.scripts.readme update
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add patches_info.json versions_info.json README.md
+          git add patches_info.json versions_info.json README.md obtainium.json
           git diff --cached --quiet || git commit -m "docs: update patches and versions info [skip ci]"
           git push || true

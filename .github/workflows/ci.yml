@@ -6,9 +6,14 @@ on:
     inputs:
       force_build:
         description: 'Build all apps (skip update check)'
-        required: true
+        required: false
         type: boolean
         default: false
+      apps:
+        description: 'Specific apps to build (comma-separated, e.g. "WhatsApp,Reddit")'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -19,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build_matrix: ${{ steps.get-matrix.outputs.build_matrix }}
+      has_updates: ${{ steps.get-matrix.outputs.has_updates }}
+      apps_to_build: ${{ steps.get-matrix.outputs.apps_to_build }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -33,20 +40,28 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Get build matrix
+      - name: Check for updates
         id: get-matrix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_BUILD: ${{ inputs.force_build }}
+          APPS_INPUT: ${{ inputs.apps }}
         run: |
-          if [ "${{ inputs.force_build }}" = "true" ]; then
-            echo "build_matrix=$(uv run python -m src.scripts.matrix get-matrix-force)" >> "$GITHUB_OUTPUT"
+          RESULT="$(uv run python -m src.scripts.matrix get-matrix)"
+          echo "build_matrix=$(echo "$RESULT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
+          COUNT=$(echo "$RESULT" | jq '.include | length')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_updates=true" >> "$GITHUB_OUTPUT"
+            APPS_LIST=$(echo "$RESULT" | jq -r '[.include[].id] | unique | join(",")')
+            echo "apps_to_build=$APPS_LIST" >> "$GITHUB_OUTPUT"
           else
-            echo "build_matrix=$(uv run python -m src.scripts.matrix get-matrix)" >> "$GITHUB_OUTPUT"
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+            echo "apps_to_build=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Notify skipped build
-        if: steps.get-matrix.outputs.build_matrix == '[]'
-        run: echo "::notice title=Build Skipped::No new releases detected."
+        if: steps.get-matrix.outputs.has_updates != 'true'
+        run: echo "::notice title=Build Skipped::No new releases or updates detected."
 
       - name: Clear older runs
         env:
@@ -57,8 +72,9 @@ jobs:
   build:
     name: build
     needs: check-versions
-    if: fromJson(needs.check-versions.outputs.build_matrix)[0] != null
+    if: needs.check-versions.outputs.has_updates == 'true'
     uses: ./.github/workflows/build.yml
     with:
-      filter_changelog: ${{ inputs.force_build != true }}
+      apps: ${{ needs.check-versions.outputs.apps_to_build }}
+      force_build: ${{ inputs.force_build == true }}
     secrets: inherit

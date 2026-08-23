@@ -17,6 +17,11 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 from src.core.logger import IS_GITHUB, abort
 
 
@@ -37,13 +42,14 @@ def _parse_log_file(log: Path, collected: list[str]) -> str:
             collected.append(f"{line}  \n{next_line}  ")
     return microg_line
 
-def combine_logs(logs_dir: Path | str) -> None:
+def combine_logs(logs_dir: Path | str, versions_file: Path | str = "versions_info.json") -> None:
     logs = sorted(Path(logs_dir).rglob("build*.md"))
     
     # Load versions and patches info
     versions_info = {"success": []}
-    if Path("versions_info.json").exists():
-        versions_info = json.loads(Path("versions_info.json").read_text(encoding="utf-8"))
+    v_path = Path(versions_file)
+    if v_path.exists():
+        versions_info = json.loads(v_path.read_text(encoding="utf-8"))
         
     patches_info = {}
     if Path("patches_info.json").exists():
@@ -139,12 +145,15 @@ def combine_logs(logs_dir: Path | str) -> None:
         print("\n\n".join(unique))
 
 def main() -> None:
-    _require_ci("logs.py")
     match sys.argv[1:]:
-        case ["combine-logs", *args]:
-            combine_logs(logs_dir=Path(args[0] if args else "logs"))
+        case ["combine-logs", logs_dir, versions_file]:
+            combine_logs(logs_dir=Path(logs_dir), versions_file=Path(versions_file))
+        case ["combine-logs", logs_dir]:
+            combine_logs(logs_dir=Path(logs_dir))
+        case ["combine-logs"]:
+            combine_logs(logs_dir=Path("logs"))
         case _:
-            abort("Usage: logs.py combine-logs [dir]")
+            abort("Usage: logs.py combine-logs [dir] [versions_file]")
 
 if __name__ == "__main__":
     main()

@@ -42,25 +42,27 @@ def fetch_recommended_wa_versions() -> tuple[str, str]:
     return wpp_ver, biz_ver
 
 
-def update_config_toml() -> None:
+def update_config_toml() -> bool:
     """Fetch WaEnhancer recommended versions and update WhatsApp sections in config.toml."""
     wpp_ver, biz_ver = fetch_recommended_wa_versions()
 
     if not CONFIG_PATH.exists():
         print("[-] config.toml not found", file=sys.stderr)
-        return
+        return False
 
     content = CONFIG_PATH.read_text(encoding="utf-8")
+    original_content = content
 
     # WhatsApp entry
     wa_entry = (
         f"[WhatsApp]\n"
         f'app-name = "WhatsApp"\n'
         f"mirror = true\n"
+        f'badge-color = "25D366"\n'
+        f'badge-icon = "whatsapp"\n'
         f'version = "{wpp_ver}"\n'
         f'arch = "arm64-v8a"\n'
         f'pkg-name = "com.whatsapp"\n'
-        f'direct-dlurl = "https://www.whatsapp.com/android/"\n'
         f'apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"\n'
         f'uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"\n'
         f'apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"'
@@ -71,6 +73,8 @@ def update_config_toml() -> None:
         f"[WhatsApp-Business]\n"
         f'app-name = "WhatsApp Business"\n'
         f"mirror = true\n"
+        f'badge-color = "25D366"\n'
+        f'badge-icon = "whatsapp"\n'
         f'version = "{biz_ver}"\n'
         f'arch = "arm64-v8a"\n'
         f'pkg-name = "com.whatsapp.w4b"\n'
@@ -89,8 +93,11 @@ def update_config_toml() -> None:
     else:
         content = content.rstrip() + f"\n\n{wa_biz_entry}\n"
 
-    CONFIG_PATH.write_text(content, encoding="utf-8")
-    print("[+] Successfully updated config.toml with WhatsApp and WhatsApp Business entries.")
+    if content != original_content:
+        CONFIG_PATH.write_text(content, encoding="utf-8")
+        print("[+] Successfully updated config.toml with WhatsApp and WhatsApp Business entries.")
+        return True
+    return False
 
 
 if __name__ == "__main__":

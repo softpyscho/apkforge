@@ -55,9 +55,13 @@ class GitHubScraper(BaseScraper):
                 continue
 
             if name.startswith(prefix):
-                seen[_ARCH_SUFFIX.sub("", name[len(prefix):])] = None
+                raw_ver = _ARCH_SUFFIX.sub("", name[len(prefix):])
             else:
-                seen[_ARCH_SUFFIX.sub("", name)] = None
+                raw_ver = _ARCH_SUFFIX.sub("", name)
+
+            m_ver = re.search(r"(\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?)\b", raw_ver)
+            ver = m_ver.group(1) if m_ver else raw_ver
+            seen[ver] = None
         return AppMetadata(pkg_name=pkg_name, versions=list(seen) or [tag])
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
