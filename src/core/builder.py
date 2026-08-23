@@ -255,8 +255,9 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     elif entry.version in ("auto", "latest") and patcher and (v := patcher.get_last_supported_version(list_patches, pkg_name, entry.patches, experimental=entry.version == "latest")):
         version, is_custom = v, False
     else:
-        version = ""
-        sources_to_try = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
+        sources_to_try = [s for s in ["apkmirror", dl_from] if s in entry.dl_urls] + [s for s in entry.dl_urls if s not in ("apkmirror", dl_from)]
+        seen = set()
+        sources_to_try = [s for s in sources_to_try if not (s in seen or seen.add(s))]
         for src in sources_to_try:
             try:
                 versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
@@ -345,7 +346,10 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
         return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name, source_used=_read_src(stock_apkm))
 
     ordered_sources = [s for s in entry.dl_urls if s not in failed_sources]
-    if dl_from in ordered_sources:
+    if "apkmirror" in ordered_sources:
+        ordered_sources.remove("apkmirror")
+        ordered_sources.insert(0, "apkmirror")
+    elif dl_from in ordered_sources:
         ordered_sources.remove(dl_from)
         ordered_sources.insert(0, dl_from)
     if not ordered_sources:
