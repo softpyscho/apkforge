@@ -492,8 +492,21 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
         raise BuilderError(f"{exc}\n{full_out}") from exc
 
     if not patched_apk.exists():
-        full_out = "\n".join(captured_out)
-        raise BuilderError(f"Patched APK output was not created at '{patched_apk}':\n{full_out}")
+        # The patcher might use a different filename (e.g., including version codes)
+        # Search for the most recently created APK in TEMP_DIR that matches the base pattern
+        base_pattern = f"{base_name}-v{version_f}-{arch_f}"
+        matching_apks = [
+            f for f in TEMP_DIR.glob(f"{base_pattern}*.apk")
+            if f.is_file() and f.name.endswith(".apk")
+        ]
+        
+        if matching_apks:
+            # Use the most recently modified file
+            patched_apk = max(matching_apks, key=lambda f: f.stat().st_mtime)
+            pr(f"Found patched APK at alternate location: {patched_apk.name}")
+        else:
+            full_out = "\n".join(captured_out)
+            raise BuilderError(f"Patched APK output was not created at '{patched_apk}':\n{full_out}")
 
     apk_output = BUILD_DIR / apk_name
     shutil.move(patched_apk, apk_output)
