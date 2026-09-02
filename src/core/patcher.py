@@ -37,9 +37,18 @@ def _run_java(*args: str | Path, capture: bool = True, timeout: int = 600) -> st
         raise PatcherError(redacted.strip())
     return combined
 
+def _clean_version_string(ver: str) -> str:
+    # Strip any bracketed [versionCodes: ...] or parenthesized (12345) annotations
+    return re.split(r"[\(\[]", ver)[0].strip()
+
 def _parse_patch_block(output: str, patch_name: str) -> list[str]:
     if m := re.search(rf"Name:\s*{re.escape(patch_name)}\n.*?Compatible versions:\s*\n(.*?)(?:\n\n|\Z)", output, re.DOTALL | re.IGNORECASE):
-        return [v.strip() for v in m.group(1).splitlines() if v.strip()]
+        vers = []
+        for line in m.group(1).splitlines():
+            clean = _clean_version_string(line)
+            if clean:
+                vers.append(clean)
+        return vers
     return []
 
 def _parse_versions_output(output: str) -> list[str]:
@@ -50,7 +59,7 @@ def _parse_versions_output(output: str) -> list[str]:
     block = output.split(marker)[1].split("\n\n")[0]
     versions = []
     for line in block.splitlines():
-        clean_ver = line.split("(")[0].strip()
+        clean_ver = _clean_version_string(line)
         if clean_ver:
             versions.append(clean_ver)
     return versions

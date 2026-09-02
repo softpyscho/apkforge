@@ -138,6 +138,12 @@ jobs:
           TAG: ${{ needs.prepare.outputs.version }}
         run: |
           shopt -s nullglob
+          for f in ./build/*.apk; do
+            clean_f=$(echo "$f" | tr -d '[]()' | tr ' ' '_')
+            if [[ "$f" != "$clean_f" ]]; then
+              mv "$f" "$clean_f"
+            fi
+          done
           apks=(./build/*.apk)
           if [[ ${#apks[@]} -eq 0 ]]; then
             echo "No APKs to upload, skipping"

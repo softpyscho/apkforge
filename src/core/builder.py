@@ -144,9 +144,35 @@ class BuilderError(Exception):
     pass
 
 
+def _clean_version(ver: str) -> str:
+    """Strip bracketed metadata (e.g. [versionCodes: ...]) or parenthesized annotations."""
+    if not ver:
+        return ""
+    return re.split(r"[\(\[]", ver.strip())[0].strip()
+
+
+def _sanitize_cached_apks() -> None:
+    """Sanitize any APK files in ORIGINAL_APK_DIR that contain bracketed or parenthetical metadata."""
+    if not ORIGINAL_APK_DIR.exists():
+        return
+    for cached_file in list(ORIGINAL_APK_DIR.iterdir()):
+        if not cached_file.is_file():
+            continue
+        if "[" in cached_file.name or "(" in cached_file.name:
+            cleaned_name = re.sub(r"\[.*?\]|\(.*?\)", "", cached_file.name)
+            cleaned_name = re.sub(r"-+", "-", cleaned_name)
+            target = cached_file.parent / cleaned_name
+            if not target.exists():
+                try:
+                    cached_file.rename(target)
+                    pr(f"Sanitized cached file: '{cached_file.name}' -> '{cleaned_name}'")
+                except Exception as exc:
+                    wpr(f"Could not rename cached file '{cached_file.name}': {exc}")
+
+
 def _parse_ver(v_str: str) -> tuple:
     """Safely parse a version string into a comparable tuple key."""
-    cleaned = re.sub(r"^[vV]", "", v_str.strip())
+    cleaned = re.sub(r"^[vV]", "", _clean_version(v_str).strip())
     parts = []
     for token in re.split(r"[._-]", cleaned):
         if token.isdigit():
@@ -276,7 +302,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                     m_ver = re.search(r"-v([^-]+)-", cached_file.name)
                     if m_ver:
-                        c_ver = m_ver.group(1)
+                        c_ver = _clean_version(m_ver.group(1))
                         if not is_wildcard or c_ver.startswith(f"{prefix}."):
                             cached_vers.append(c_ver)
             if cached_vers:
@@ -287,7 +313,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                     if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                         m_ver = re.search(r"-v([^-]+)-", cached_file.name)
                         if m_ver:
-                            cached_vers.append(m_ver.group(1))
+                            cached_vers.append(_clean_version(m_ver.group(1)))
                 if cached_vers:
                     version = get_highest_ver(cached_vers)
                     pr(f"Found fallback cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
@@ -299,6 +325,7 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 version = "latest"
         is_custom = entry.version not in ("auto", "latest")
 
+    version = _clean_version(version)
     pr(f"Choosing version '{version}' for '{entry.table}'")
     return version, is_custom
 
@@ -307,7 +334,8 @@ def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
     """Delete outdated APK versions for pkg_name once a build has successfully completed."""
     if not pkg_name:
         return
-    version_f = keep_version.replace(" ", "").lstrip("v")
+    version_clean = _clean_version(keep_version)
+    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
     for old_file in ORIGINAL_APK_DIR.iterdir():
         if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig", ".src")):
             if f"-v{version_f}-" not in old_file.name:
@@ -317,7 +345,8 @@ def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
 
 def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str]) -> DownloadResult:
     arch_f = arch.replace(" ", "")
-    version_f = version.replace(" ", "").lstrip("v")
+    version_clean = _clean_version(version)
+    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
     base_name = f"{pkg_name}-v{version_f}-{arch_f}.apk"
     stock_apk = ORIGINAL_APK_DIR / base_name
 
@@ -454,7 +483,8 @@ def _verify_sig(dl_result: DownloadResult, pkg_name: str, patcher: PatcherCLI, t
 
 def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher: PatcherCLI, list_patches: str, dl_result: DownloadResult, excluded_patches: list[str]) -> Path:
     arch_f = arch.replace(" ", "")
-    version_f = version.replace(" ", "").lstrip("v")
+    version_clean = _clean_version(version)
+    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
     auto_patches = patcher.resolve_auto_patches(list_patches)
     
     dynamic_args = list(entry.patcher_args)
@@ -536,13 +566,13 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                     if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
                         m_ver = re.search(r"-v([^-]+)-", cached_file.name)
                         if m_ver:
-                            cached_candidates.append(m_ver.group(1))
+                            cached_candidates.append(_clean_version(m_ver.group(1)))
 
             if cached_candidates:
                 fallback_ver = get_highest_ver(cached_candidates)
                 wpr(f"Online download failed for '{entry.table}'. Reusing cached version '{fallback_ver}' from '{ORIGINAL_APK_DIR}'...")
                 dl_result = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
-                version = fallback_ver
+                version = _clean_version(fallback_ver)
                 force = True
             elif entry.version in ("auto", "latest"):
                 fallback_version = None
@@ -597,7 +627,8 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         # Extract actual versionName from APK manifest if version is unspecific ("latest", "auto", "nightly", etc.)
         real_ver = extract_apk_version(dl_result.path)
         if real_ver:
-            if version in ("latest", "auto", "nightly") or not version or not re.search(r"\d+\.\d+", version):
+            real_ver = _clean_version(real_ver)
+            if version in ("latest", "auto", "nightly") or not version or not re.search(r"^\d+\.\d+", version) or "[" in version or "(" in version:
                 pr(f"Extracted actual version '{real_ver}' from APK manifest for '{entry.table}' (was '{version}')")
                 version = real_ver
                 force = True
@@ -621,7 +652,8 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 apk_name = dl_result.original_name
             else:
                 arch_f = arch.replace(" ", "")
-                version_f = version.replace(" ", "").lstrip("v")
+                version_clean = _clean_version(version)
+                version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
                 base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
                 apk_name = f"{base_name}-v{version_f}-{arch_f}.apk"
             apk_output = BUILD_DIR / apk_name
@@ -801,6 +833,8 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
     if not entries:
         epr("No entries to build")
         return False
+
+    _sanitize_cached_apks()
 
     ks_path: Path | None = None
     if ks_b64 := os.getenv("KEYSTORE_BASE64"):
