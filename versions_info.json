@@ -1,34 +1,6 @@
 {
   "success": [
     {
-      "app": "WhatsApp-Business",
-      "label": "WhatsApp Business (arm64-v8a)",
-      "version": "2.26.30.85",
-      "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
-      "source": "uptodown"
-    },
-    {
-      "app": "Reddit",
-      "label": "Reddit (arm64-v8a)",
-      "version": "2026.14.0",
-      "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Greenify",
-      "label": "Greenify (arm64-v8a)",
-      "version": "4.7.5",
-      "apk": "greenify-morphe-v4.7.5-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "RedotPay",
-      "label": "RedotPay (arm64-v8a)",
-      "version": "3.12.0",
-      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
-      "source": "direct"
-    },
-    {
       "app": "Stremio",
       "label": "Stremio (arm64-v8a)",
       "version": "2.3.2-android",
@@ -36,66 +8,17 @@
       "source": "direct"
     },
     {
-      "app": "WhatsApp",
-      "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.35.70",
-      "apk": "whatsapp-mirror-v2.26.35.70-arm64-v8a.apk",
-      "source": "direct"
-    },
-    {
-      "app": "Duck-Detector",
-      "label": "Duck Detector",
-      "version": "2026.08.28-c1c8e0c17577",
-      "apk": "Duck.Detector-2026.08.28-c1c8e0c17577.apk",
-      "source": "github"
+      "app": "WhatsApp-Business",
+      "label": "WhatsApp Business (arm64-v8a)",
+      "version": "2.26.30.85",
+      "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
+      "source": "uptodown"
     },
     {
       "app": "Alarmy",
       "label": "Alarmy (arm64-v8a)",
       "version": "26.32.0",
       "apk": "alarmy-morphe-v26.32.0-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Truecaller",
-      "label": "Truecaller (arm64-v8a)",
-      "version": "26.10.6",
-      "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Battery-Guru",
-      "label": "Battery Guru (arm64-v8a)",
-      "version": "2.5.0.6",
-      "apk": "battery-guru-morphe-v2.5.0.6-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Twitter",
-      "label": "Twitter (arm64-v8a)",
-      "version": "12.19.1-release.0",
-      "apk": "twitter-morphe-v12.19.1-release.0-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Mixplorer",
-      "label": "Mixplorer (arm64-v8a)",
-      "version": "6.71.12-API29",
-      "apk": "mixplorer-mirror-v6.71.12-API29-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Bitget",
-      "label": "Bitget (arm64-v8a)",
-      "version": "2.90.1",
-      "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Xodo",
-      "label": "Xodo (arm64-v8a)",
-      "version": "11.0.0",
-      "apk": "xodo-morphe-v11.0.0-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
@@ -106,11 +29,18 @@
       "source": "apkmirror"
     },
     {
-      "app": "Instagram",
-      "label": "Instagram (arm64-v8a)",
-      "version": "439.0.0.37.89",
-      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk",
+      "app": "Duck-Detector",
+      "label": "Duck Detector",
+      "version": "2026.08.28-c1c8e0c17577",
+      "apk": "Duck.Detector-2026.08.28-c1c8e0c17577.apk",
       "source": "github"
+    },
+    {
+      "app": "WhatsApp",
+      "label": "WhatsApp (arm64-v8a)",
+      "version": "2.26.34.82",
+      "apk": "whatsapp-mirror-v2.26.34.82-arm64-v8a.apk",
+      "source": "direct"
     },
     {
       "app": "Splitwise",
@@ -127,6 +57,76 @@
       "source": "apkmirror"
     },
     {
+      "app": "Amazon-Prime-Video",
+      "label": "Amazon Prime Video (arm64-v8a)",
+      "version": "3.0.452",
+      "apk": "amazon-prime-video-morphe-v3.0.452-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Mixplorer",
+      "label": "Mixplorer (arm64-v8a)",
+      "version": "6.71.14-API29",
+      "apk": "mixplorer-mirror-v6.71.14-API29-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "RedotPay",
+      "label": "RedotPay (arm64-v8a)",
+      "version": "3.12.0",
+      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
+      "source": "direct"
+    },
+    {
+      "app": "Greenify",
+      "label": "Greenify (arm64-v8a)",
+      "version": "4.7.5",
+      "apk": "greenify-morphe-v4.7.5-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Xodo",
+      "label": "Xodo (arm64-v8a)",
+      "version": "11.0.0",
+      "apk": "xodo-morphe-v11.0.0-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Reddit",
+      "label": "Reddit (arm64-v8a)",
+      "version": "2026.14.0",
+      "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Battery-Guru",
+      "label": "Battery Guru (arm64-v8a)",
+      "version": "2.5.0.6",
+      "apk": "battery-guru-morphe-v2.5.0.6-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Truecaller",
+      "label": "Truecaller (arm64-v8a)",
+      "version": "26.10.6",
+      "apk": "truecaller-morphe-v26.10.6-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Twitter",
+      "label": "Twitter (arm64-v8a)",
+      "version": "12.19.1-release.0",
+      "apk": "twitter-morphe-v12.19.1-release.0-arm64-v8a.apk",
+      "source": "apkmirror"
+    },
+    {
+      "app": "Instagram",
+      "label": "Instagram (arm64-v8a)",
+      "version": "439.0.0.37.89",
+      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk",
+      "source": "github"
+    },
+    {
       "app": "TickTick",
       "label": "TickTick (arm64-v8a)",
       "version": "8.1.3.3",
@@ -134,10 +134,10 @@
       "source": "apkmirror"
     },
     {
-      "app": "Amazon-Prime-Video",
-      "label": "Amazon Prime Video (arm64-v8a)",
-      "version": "3.0.452",
-      "apk": "amazon-prime-video-morphe-v3.0.452-arm64-v8a.apk",
+      "app": "Bitget",
+      "label": "Bitget (arm64-v8a)",
+      "version": "2.90.1",
+      "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
       "source": "apkmirror"
     }
   ]
