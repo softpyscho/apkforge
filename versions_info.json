@@ -31,8 +31,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.08.28-c1c8e0c17577",
-      "apk": "Duck.Detector-2026.08.28-c1c8e0c17577.apk",
+      "version": "2026.09.07-c8d28ec3651d",
+      "apk": "Duck.Detector-2026.09.07-c8d28ec3651d.apk",
       "source": "github"
     },
     {
@@ -73,8 +73,8 @@
     {
       "app": "RedotPay",
       "label": "RedotPay (arm64-v8a)",
-      "version": "3.12.0",
-      "apk": "redotpay-mirror-v3.12.0-arm64-v8a.apk",
+      "version": "3.14.0",
+      "apk": "redotpay-mirror-v3.14.0-arm64-v8a.apk",
       "source": "direct"
     },
     {
@@ -138,7 +138,7 @@
       "label": "Bitget (arm64-v8a)",
       "version": "2.90.1",
       "apk": "bitget-mirror-v2.90.1-arm64-v8a.apk",
-      "source": "uptodown"
+      "source": "apkmirror"
     }
   ]
 }
