@@ -12,7 +12,7 @@
       "label": "WhatsApp Business (arm64-v8a)",
       "version": "2.26.30.85",
       "apk": "whatsapp-business-mirror-v2.26.30.85-arm64-v8a.apk",
-      "source": "apkmirror"
+      "source": "uptodown"
     },
     {
       "app": "Alarmy",
@@ -38,8 +38,8 @@
     {
       "app": "WhatsApp",
       "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.35.71",
-      "apk": "whatsapp-mirror-v2.26.35.71-arm64-v8a.apk",
+      "version": "2.26.36.70",
+      "apk": "whatsapp-mirror-v2.26.36.70-arm64-v8a.apk",
       "source": "direct"
     },
     {
@@ -66,8 +66,8 @@
     {
       "app": "Mixplorer",
       "label": "Mixplorer (arm64-v8a)",
-      "version": "6.71.14-API29",
-      "apk": "mixplorer-mirror-v6.71.14-API29-arm64-v8a.apk",
+      "version": "6.71.15",
+      "apk": "mixplorer-mirror-v6.71.15-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
