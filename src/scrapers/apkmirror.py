@@ -21,6 +21,7 @@ from src.core.network import NetworkManager, ResourceNotFoundError
 from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError, _parse_html
 
 _DEFAULT_ARCH: frozenset[str] = frozenset({"universal", "noarch", "arm64-v8a + armeabi-v7a", "arm64-v8a + armeabi"})
+_HOME = "https://www.apkmirror.com/"
 
 class APKMirrorError(ScraperError):
     pass
@@ -32,13 +33,14 @@ class APKMirrorScraper(BaseScraper):
         self._release_urls: dict[str, str] = {}
 
     def fetch_metadata(self, url: str) -> AppMetadata:
-        resp_html = self.net.get(url)
+        resp_html = self.net.get(url, headers={"Referer": _HOME})
         self._category = url.rstrip("/").split("/")[-1]
         m = re.search(r"play\.google\.com/store/apps/details\?id=([\w.]+)", resp_html)
         if not m:
             raise APKMirrorError("Package name not found")
 
-        soup = _parse_html(self.net.get(f"https://www.apkmirror.com/uploads/?appcategory={self._category}"))
+        uploads_url = f"https://www.apkmirror.com/uploads/?appcategory={self._category}"
+        soup = _parse_html(self.net.get(uploads_url, headers={"Referer": url}))
         versions: list[str] = []
         for a in soup.select("#primary a.fontBlack[href*='-release/']"):
             text = a.get_text(strip=True)
@@ -50,9 +52,11 @@ class APKMirrorScraper(BaseScraper):
         return AppMetadata(pkg_name=m.group(1), versions=versions)
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
+        referer = url
         release_url = self._release_urls.get(version)
         if release_url is None:
-            search_html = self.net.get(f"{url.rstrip('/')}/?s={version}")
+            search_url = f"{url.rstrip('/')}/?s={version}"
+            search_html = self.net.get(search_url, headers={"Referer": url})
             soup = _parse_html(search_html)
             for a in soup.select("a.fontBlack[href*='-release/']"):
                 if version in a.get_text() and f"/{self._category}/" in a.get("href", ""):
@@ -63,9 +67,10 @@ class APKMirrorScraper(BaseScraper):
             raise APKMirrorError("Version not found")
 
         try:
-            release_html = self.net.get(release_url)
+            release_html = self.net.get(release_url, headers={"Referer": referer})
         except ResourceNotFoundError:
             raise APKMirrorError("Version not found") from None
+        referer = release_url
 
         is_bundle = False
         soup_release = _parse_html(release_html)
@@ -73,7 +78,8 @@ class APKMirrorScraper(BaseScraper):
             dl_url = self._pick_variant(soup_release, dpi, arch)
             if dl_url is None:
                 raise APKMirrorError("No matching variant found")
-            release_html = self.net.get(dl_url[0])
+            release_html = self.net.get(dl_url[0], headers={"Referer": referer})
+            referer = dl_url[0]
             is_bundle = dl_url[1] == "BUNDLE"
 
         soup_dl = _parse_html(release_html)
@@ -81,13 +87,13 @@ class APKMirrorScraper(BaseScraper):
         if not btn or not btn.get("href"):
             raise APKMirrorError("Download button not found on release page")
         btn_url = urljoin("https://www.apkmirror.com", btn["href"])
-        soup_final = _parse_html(self.net.get(btn_url))
+        soup_final = _parse_html(self.net.get(btn_url, headers={"Referer": referer}))
         dl_link = soup_final.select_one("span > a[rel=nofollow]")
         if not dl_link or not dl_link.get("href"):
             raise APKMirrorError("Final download link not found on page")
         final_url = urljoin("https://www.apkmirror.com", dl_link["href"])
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
-        self.net.download(final_url, out_path)
+        self.net.download(final_url, out_path, headers={"Referer": btn_url})
         return DownloadResult(path=out_path, is_bundle=is_bundle)
 
     def _pick_variant(self, soup: BeautifulSoup, dpi: str, arch: str) -> tuple[str, str] | None:

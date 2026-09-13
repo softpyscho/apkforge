@@ -81,9 +81,9 @@ class DirectScraper(BaseScraper):
         if not direct_url:
             raise DirectScraperError(f"No direct URL available for '{url}'")
 
-        if version and version not in ("auto", "latest", "nightly") and not re.search(re.escape(version) + r"(?:\D|$)", direct_url):
-            raise DirectScraperError(f"Direct download '{direct_url}' does not contain requested version '{version}'")
-
+        # Direct vendor links often omit the version (e.g. .../WhatsApp.apk), so the
+        # requested version cannot be validated from the URL here. The builder verifies
+        # the downloaded artifact's manifest version for wildcard targets instead.
         is_bundle = direct_url.lower().split("?")[0].endswith((".apkm", ".xapk"))
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
         self.net.download(direct_url, out_path)

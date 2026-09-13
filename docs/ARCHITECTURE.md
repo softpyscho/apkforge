@@ -39,7 +39,7 @@ This document explains how apkforge is put together. It is meant for contributor
 | `src/core/builder.py` | The orchestrator. Resolves package names and versions, downloads stock APKs with fallbacks, applies patches with automatic exclusion/retry, trims bundles and writes reports. |
 | `src/core/patcher.py` | Thin wrapper around the Morphe CLI: `list-patches`, `list-versions`, and `patch`. Streams patch output live with a timeout and redacts keystore secrets. |
 | `src/core/prebuilts.py` | Fetches CLI jars and `.mpp` patch bundles from GitHub/GitLab releases, caching them under `temp/`. |
-| `src/core/network.py` | Shared `curl_cffi` session with retries, per-domain rate-limiting locks and GitHub auth headers. |
+| `src/core/network.py` | Shared HTTP client with retries, per-domain rate-limiting locks, browser impersonation rotation, proxy/FlareSolverr support and GitHub auth headers. |
 | `src/core/versions.py` | Centralised version helpers: `clean_version`, `parse_version`, `version_sort_key`, `highest_version`, `highest_tag`. |
 | `src/core/logger.py` | Colourised local logging with GitHub Actions annotations, plus `require_ci`. |
 | `src/scrapers/` | Per-source metadata + download strategies (`apkmirror`, `uptodown`, `github`, `direct`) behind the `BaseScraper` interface. |
@@ -63,6 +63,18 @@ This document explains how apkforge is put together. It is meant for contributor
 - Builds run in a `ThreadPoolExecutor` sized by `parallel-jobs`; each build gets its own temp directory so parallel builds of the same app cannot collide.
 - `NetworkManager` serialises requests per domain and per destination path, making concurrent downloads safe.
 - Stock APKs persist in `unmodified-apks/` and are cached between CI runs via `actions/cache`, keyed per app.
+
+## Bot protection
+
+Many sources (notably APKMirror and Uptodown) are fronted by Cloudflare. `NetworkManager` handles this in layers:
+
+1. **Browser impersonation** — each request is made with a `curl_cffi` browser target (Chrome/Firefox/Edge/Safari), matching TLS, HTTP/2 and default headers. Rotation swaps the whole session under a reader/writer lock so the User-Agent is never overridden by hand (the FlareSolverr UA excepted).
+2. **Navigation headers** — `Accept`, `Accept-Language`, `Sec-Fetch-*` (with the correct `same-origin`/`cross-site`/`none` value) and chained `Referer` values are sent like a real browser session.
+3. **Warm-up & rotation** — a challenge is a `cf-mitigated` header or an interstitial body marker; `Server: cloudflare` alone is *not* treated as one, to avoid misclassifying ordinary blocked responses. The domain root is fetched once to acquire cookies; failing that, the impersonation target is rotated (up to the retry budget).
+4. **FlareSolverr** — when `FLARESOLVERR_URL` is set, managed challenges (`cf-mitigated`/Turnstile) are solved in a real browser; the returned HTML and cookies (including `cf_clearance`) are merged in and reused. For downloads the solver is asked for cookies only (`returnOnlyCookies`) against the real asset URL, so the binary is never pulled through it.
+5. **Proxy** — `APKFORGE_PROXY` (or the standard `*_PROXY` variables) routes all traffic through a proxy; a residential/mobile proxy is the most reliable fix for blocked IP ranges.
+
+`Retry-After` is honoured for `429`/`503`, and challenge/HTTP failures fall back to the next configured source.
 
 ## Version semantics
 

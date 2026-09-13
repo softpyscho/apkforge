@@ -234,6 +234,29 @@ Resolution order when signing:
 
 APKPure support was removed: its page layout could not be reliably parsed and no build ever succeeded through it. See the [roadmap](docs/ROADMAP.md) for re-adding it with a verified implementation.
 
+## 🛡️ Getting Past Bot Protection
+
+APKMirror and Uptodown sit behind **Cloudflare**. apkforge already applies several layers automatically:
+
+- rotating browser **TLS/HTTP2 impersonation** (`curl_cffi`) across Chrome, Firefox, Edge and Safari;
+- realistic navigation headers (`Accept`, `Sec-Fetch-*`, `Referer` chains);
+- lazy cookie warm-up of the domain root, and `Retry-After` back-off.
+
+When Cloudflare answers with a **managed challenge** (`cf-mitigated: challenge` — the "Just a moment…" page), a JavaScript-capable browser must solve it; no HTTP client can. **Uptodown** additionally gates downloads behind Cloudflare **Turnstile** and a token-signed AJAX endpoint, so automated downloads there always require a browser solver. For those cases, configure one (or both) of the following in `.env` or as CI secrets/variables:
+
+| Variable | What it does |
+|:---------|:-------------|
+| `APKFORGE_PROXY` | Routes every request through an HTTP(S)/SOCKS proxy. A **residential or mobile proxy** is the most reliable fix for blocked IP ranges (e.g. CI runners). |
+| `FLARESOLVERR_URL` | URL of a [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance. It solves the challenge in a real browser and hands back the HTML plus a `cf_clearance` cookie, which apkforge then reuses for the APK download. |
+
+```env
+# .env — either or both
+APKFORGE_PROXY=http://user:pass@gateway.example.com:8080
+FLARESOLVERR_URL=http://localhost:8191
+```
+
+On **GitHub Actions**, set `APKFORGE_PROXY` as a repository secret, and set the repository **variable** `USE_FLARESOLVERR=true` to start a FlareSolverr container automatically for the build. Direct and GitHub Releases sources are unaffected and need no proxy.
+
 ## ⚙️ Configuration
 
 Everything is configured in [`config.toml`](config.toml). Top-level keys are defaults inherited by every app; each app is a TOML table. See [CONTRIBUTING.md](CONTRIBUTING.md) for a guided walkthrough.

@@ -54,6 +54,20 @@ uv run main.py clear              # delete build/, temp/, build.md and build.jso
 | `unmodified-apks/` | Cached stock APKs and sidecar `.src` / `.orig` metadata |
 | `temp/` | Morphe CLI jars, patch bundles and scratch files |
 
+## 🔧 Environment variables
+
+`.env` is loaded automatically at startup. Everything is optional.
+
+| Variable | Purpose |
+|:---------|:--------|
+| `GITHUB_TOKEN` | Raises GitHub API rate limits (used for CLI/patch/asset lookups). |
+| `KEYSTORE_BASE64` / `KEYSTORE_PASS` / `KEYSTORE_ALIAS` | Signing keystore (see [Signing](#-signing)). |
+| `APKFORGE_PROXY` | Route requests through an HTTP(S)/SOCKS proxy — the most reliable way past IP-based bot blocks (use a residential/mobile proxy). Standard `HTTPS_PROXY`/`ALL_PROXY` are also honoured. |
+| `FLARESOLVERR_URL` | URL of a [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance for solving Cloudflare managed challenges. |
+| `TG_TOKEN` / `TG_CHAT` | Telegram notification (CI only). |
+
+When a source is behind a Cloudflare managed challenge, apkforge retries with rotating browser impersonation, warms up cookies, then falls back to `FLARESOLVERR_URL` if set. Uptodown additionally gates downloads behind Cloudflare Turnstile (signed AJAX token), so its download path only works with a browser solver; its version lists are still used for resolution. If everything fails, the source is skipped and the next configured source is tried.
+
 ## ⚙️ Configuration reference
 
 All configuration lives in [`config.toml`](config.toml). Top-level keys are defaults inherited by every app entry; each app is a TOML table.

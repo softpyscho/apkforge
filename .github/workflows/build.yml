@@ -100,13 +100,31 @@ jobs:
           restore-keys: |
             apk-cache-${{ matrix.id }}-
 
+      - name: Start FlareSolverr (optional)
+        if: vars.USE_FLARESOLVERR == 'true'
+        run: |
+          docker rm -f flaresolverr 2>/dev/null || true
+          docker run -d --rm --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+          for i in {1..30}; do
+            curl -fsS http://localhost:8191/ >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "FlareSolverr failed to start" >&2
+          exit 1
+
       - name: Build APKs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          APKFORGE_PROXY: ${{ secrets.APKFORGE_PROXY }}
+          FLARESOLVERR_URL: ${{ vars.USE_FLARESOLVERR == 'true' && 'http://localhost:8191' || '' }}
         run: uv run main.py ${{ matrix.id }} ${{ matrix.arch }}
+
+      - name: Stop FlareSolverr
+        if: always() && vars.USE_FLARESOLVERR == 'true'
+        run: docker rm -f flaresolverr 2>/dev/null || true
 
       - name: Save stock APKs
         if: success()

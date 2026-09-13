@@ -4,6 +4,7 @@ A living list of improvements that would make apkforge a more complete APK mirro
 
 ## High impact
 
+- **Browser-based challenge solver.** APKMirror serves a Cloudflare *managed challenge* and Uptodown gates downloads behind Cloudflare *Turnstile* plus a token-signed AJAX endpoint (`POST /ajax/app/{app}/file/{file}/download-url`) — both require JavaScript execution. apkforge already supports FlareSolverr (`FLARESOLVERR_URL`) and proxies (`APKFORGE_PROXY`); a bundled Playwright/`nodriver` solver driving the runner's pre-installed Chrome would remove the external FlareSolverr dependency and unlock Uptodown downloads.
 - **Re-introduce APKPure with a verified scraper.** APKPure support was removed because its selectors were guessed and could not be validated (the site returns HTTP 403 to plain fetches). A maintained implementation using `curl_cffi` impersonation, or its public API endpoints, would restore a large catalogue.
 - **Per-app build-artifact manifest.** Emit a machine-readable manifest (package, version, versionCode, SHA-256 of the built APK, applied patches, source URL) alongside each release. This makes downstream verification, Obtainium pinning and auditing far easier.
 - **Resumable / incremental builds.** Cache both the stock APK *and* the patched output keyed by `(pkg, version, patches-hash)` so re-runs skip unchanged work.

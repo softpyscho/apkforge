@@ -81,40 +81,58 @@ def parse_axml_strings(axml_data: bytes) -> list[str]:
     return strings
 
 
-def extract_apk_version(apk_path: Path) -> str | None:
-    """Extract actual versionName string from AndroidManifest.xml inside APK or bundle."""
-    ver_regex = re.compile(r"^\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?$")
-
-    def _find_ver(axml: bytes) -> str | None:
-        strs = parse_axml_strings(axml)
-        for s in strs:
-            s_clean = s.strip()
-            if ver_regex.match(s_clean) and not s_clean.startswith(("7.1.", "8.0.", "9.0.")):
-                return s_clean
-        for s in strs:
-            s_clean = s.strip()
-            if re.search(r"^\d+\.\d+\.\d+", s_clean):
-                return s_clean
-        return None
-
+def _read_manifest_axml(apk_path: Path) -> bytes | None:
+    """Return the binary AndroidManifest.xml bytes from an APK or split bundle."""
     try:
         if apk_path.suffix == ".apk":
             with zipfile.ZipFile(apk_path, "r") as zf:
                 if "AndroidManifest.xml" in zf.namelist():
-                    return _find_ver(zf.read("AndroidManifest.xml"))
+                    return zf.read("AndroidManifest.xml")
         elif apk_path.suffix in (".apkm", ".xapk"):
             with zipfile.ZipFile(apk_path, "r") as zf:
-                for name in zf.namelist():
-                    if name.endswith(".apk") and not name.startswith("config."):
-                        inner_bytes = zf.read(name)
-                        with zipfile.ZipFile(io.BytesIO(inner_bytes), "r") as inner_zf:
-                            if "AndroidManifest.xml" in inner_zf.namelist():
-                                v = _find_ver(inner_zf.read("AndroidManifest.xml"))
-                                if v:
-                                    return v
+                names = [n for n in zf.namelist() if n.endswith(".apk") and not n.startswith("config.")]
+                # Prefer the base APK; zip ordering is not guaranteed to put it first.
+                names.sort(key=lambda n: (0 if Path(n).name.lower().startswith("base") else 1, n))
+                for name in names:
+                    with zipfile.ZipFile(io.BytesIO(zf.read(name)), "r") as inner_zf:
+                        if "AndroidManifest.xml" in inner_zf.namelist():
+                            return inner_zf.read("AndroidManifest.xml")
     except Exception:
-        pass
+        return None
     return None
+
+
+def extract_apk_version(apk_path: Path) -> str | None:
+    """Extract actual versionName string from AndroidManifest.xml inside APK or bundle."""
+    axml = _read_manifest_axml(apk_path)
+    if not axml:
+        return None
+
+    ver_regex = re.compile(r"^\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?$")
+    strs = parse_axml_strings(axml)
+    for s in strs:
+        s_clean = s.strip()
+        if ver_regex.match(s_clean) and not s_clean.startswith(("7.1.", "8.0.", "9.0.")):
+            return s_clean
+    for s in strs:
+        s_clean = s.strip()
+        if re.search(r"^\d+\.\d+\.\d+", s_clean):
+            return s_clean
+    return None
+
+
+def _matches_wildcard(apk_path: Path, wildcard: str) -> bool:
+    """Return False only when the manifest contains no string for the wildcard prefix.
+
+    The full AXML string pool is checked rather than a single extracted version, so an
+    unrelated library version can never cause a valid download to be rejected.
+    """
+    axml = _read_manifest_axml(apk_path)
+    if not axml:
+        epr(f"Could not read the manifest of {apk_path.name}; accepting it for wildcard '{wildcard}' without verification")
+        return True
+    prefix = wildcard[:-3] + "."
+    return any(s.strip().startswith(prefix) for s in parse_axml_strings(axml))
 
 
 def _parse_patch_names(list_patches_output: str) -> list[str]:
@@ -289,7 +307,7 @@ def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
             old_file.unlink(missing_ok=True)
 
 
-def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str]) -> DownloadResult:
+def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str], verify_wildcard: bool = False) -> DownloadResult:
     arch_f = arch.replace(" ", "")
     version_clean = clean_version(version)
     version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
@@ -334,6 +352,9 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
         try:
             res = scrapers[src].download(url, version, stock_apk, arch, entry.dpi)
             _validate_download(res.path)
+            if verify_wildcard and entry.version.endswith(".xx") and not _matches_wildcard(res.path, entry.version):
+                res.path.unlink(missing_ok=True)
+                raise BuilderError(f"Downloaded artifact does not match wildcard '{entry.version}'")
             if res.original_name:
                 res.path.with_suffix(".orig").write_text(res.original_name, encoding="utf-8")
             res.path.with_suffix(".src").write_text(src, encoding="utf-8")
@@ -465,7 +486,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         version, force = _resolve_version(entry, patcher, list_patches, pkg_name, dl_from, scrapers)
 
         try:
-            dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources)
+            dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources, verify_wildcard=True)
         except BuilderError as exc:
             cached_candidates = []
             if pkg_name:

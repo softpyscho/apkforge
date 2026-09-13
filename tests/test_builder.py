@@ -51,6 +51,20 @@ class SanitizeTests(unittest.TestCase):
         self.assertEqual(builder._sanitize_asset_name("app name (v1).apk"), "app.name.v1.apk")
 
 
+class MatchesWildcardTests(unittest.TestCase):
+    def test_matching_manifest_version(self) -> None:
+        with (
+            mock.patch.object(builder, "_read_manifest_axml", return_value=b"axml"),
+            mock.patch.object(builder, "parse_axml_strings", return_value=["2.26.35.71", "1.0.0"]),
+        ):
+            self.assertTrue(builder._matches_wildcard(Path("x.apk"), "2.26.35.xx"))
+            self.assertFalse(builder._matches_wildcard(Path("x.apk"), "2.26.30.xx"))
+
+    def test_unreadable_manifest_is_accepted(self) -> None:
+        with mock.patch.object(builder, "_read_manifest_axml", return_value=None):
+            self.assertTrue(builder._matches_wildcard(Path("x.apk"), "2.26.30.xx"))
+
+
 class OptimizeBundleTests(unittest.TestCase):
     def test_keeps_target_abi_and_english_xxhdpi(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
