@@ -10,7 +10,7 @@ license = { file = "LICENSE" }
 urls = { Repository = "https://github.com/softpyscho/apkforge" }
 dependencies = [
     "beautifulsoup4>=4.15.0",
-    "curl-cffi>=0.15.0",
+    "curl-cffi>=0.16.2",
 ]
 
 [tool.ruff]
