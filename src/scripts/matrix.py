@@ -15,15 +15,14 @@ import json
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
-from src.core.logger import IS_GITHUB, abort, epr
+from src.core.logger import abort, epr, require_ci, wpr
 from src.core.network import NetworkManager, ResourceNotFoundError
+from src.core.versions import highest_version, version_sort_key
+from src.scrapers.base import make_scraper
 
-
-def _require_ci(script: str) -> None:
-    if not IS_GITHUB:
-        abort(f"'{script}' is only available in GitHub Actions")
 
 def _fetch_latest_release(source: str, net: NetworkManager, version: str = "latest") -> tuple[str, str]:
     scheme, clean_src = source.split(":", 1)
@@ -33,12 +32,12 @@ def _fetch_latest_release(source: str, net: NetworkManager, version: str = "late
         changelog_text = upstream_rel.get("description", "") or ""
         upstream_date = upstream_rel.get("released_at", "") or ""
     elif version == "dev":
-        releases = json.loads(net.get(f"https://api.github.com/repos/{clean_src}/releases?per_page=1", headers=net._gh_headers))
+        releases = json.loads(net.get(f"https://api.github.com/repos/{clean_src}/releases?per_page=1", headers=net.gh_headers))
         upstream_rel = releases[0] if releases else {}
         changelog_text = upstream_rel.get("body", "") or ""
         upstream_date = upstream_rel.get("published_at", "") or ""
     else:
-        upstream_rel = json.loads(net.get(f"https://api.github.com/repos/{clean_src}/releases/latest", headers=net._gh_headers))
+        upstream_rel = json.loads(net.get(f"https://api.github.com/repos/{clean_src}/releases/latest", headers=net.gh_headers))
         changelog_text = upstream_rel.get("body", "") or ""
         upstream_date = upstream_rel.get("published_at", "") or ""
     return changelog_text, upstream_date
@@ -46,7 +45,7 @@ def _fetch_latest_release(source: str, net: NetworkManager, version: str = "late
 def _fetch_our_releases(repo: str, net: NetworkManager) -> str:
     # Just return the latest release date of our repo
     try:
-        rel = json.loads(net.get(f"https://api.github.com/repos/{repo}/releases/latest", headers=net._gh_headers))
+        rel = json.loads(net.get(f"https://api.github.com/repos/{repo}/releases/latest", headers=net.gh_headers))
         return rel.get("published_at", "") or ""
     except Exception as exc:
         epr(f"Failed to fetch our releases: {exc}")
@@ -102,9 +101,56 @@ def get_matrix() -> None:
         abort("No apps found to build")
     print(json.dumps({"include": include, "prerelease": is_prerelease}, ensure_ascii=False))
 
+def _built_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    if Path("versions_info.json").exists():
+        try:
+            data = json.loads(Path("versions_info.json").read_text(encoding="utf-8"))
+            for item in data.get("success", []):
+                if item.get("app"):
+                    versions[str(item["app"])] = str(item.get("version", ""))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return versions
+
+def _mirrors_behind(entries: list, net: NetworkManager, built: dict[str, str]) -> bool:
+    """Check whether any unpinned mirror app has a newer upstream stock version."""
+    for entry in entries:
+        if not entry.enabled or not entry.mirror or not entry.dl_urls:
+            continue
+        if entry.version not in ("auto", "latest"):
+            continue
+
+        for src, url in entry.dl_urls.items():
+            try:
+                versions = make_scraper(src, net).cached_metadata(url).versions
+            except Exception as exc:
+                epr(f"Could not check '{entry.table}' via '{src}': {exc}")
+                continue
+            if not versions:
+                continue
+            try:
+                highest = highest_version(versions)
+            except ValueError:
+                continue
+
+            built_ver = built.get(entry.table)
+            if not built_ver:
+                wpr(f"'{entry.table}' has no recorded build yet, scheduling a build")
+                return True
+            try:
+                newer = version_sort_key(highest) > version_sort_key(built_ver)
+            except Exception:
+                newer = highest != built_ver
+            if newer:
+                wpr(f"'{entry.table}': '{src}' has '{highest}', newer than last built '{built_ver}'")
+                return True
+    return False
+
 def check_builds_needed(force_all: bool = False) -> None:
     seen_patches: list[str] = []
     has_dev = False
+    mirror_entries: list = []
     entries = _load_entries()
     for entry in entries:
         if not entry.enabled:
@@ -114,13 +160,15 @@ def check_builds_needed(force_all: bool = False) -> None:
                 seen_patches.append(src)
         if any(spec["version"] == "dev" for spec in entry.patches.values()):
             has_dev = True
-
-    if not seen_patches:
-        print(json.dumps([]))
-        return
+        if entry.mirror:
+            mirror_entries.append(entry)
 
     if force_all:
         print(json.dumps(["all"]))
+        return
+
+    if not seen_patches and not mirror_entries:
+        print(json.dumps([]))
         return
 
     repo = os.getenv("GITHUB_REPOSITORY")
@@ -135,6 +183,7 @@ def check_builds_needed(force_all: bool = False) -> None:
             return
 
         needs_build = False
+        patch_triggered = False
         combined_changelog = ""
         for patches_source in seen_patches:
             try:
@@ -146,12 +195,21 @@ def check_builds_needed(force_all: bool = False) -> None:
             except Exception as exc:
                 epr(f"Failed to fetch upstream release for '{patches_source}': {exc}")
                 needs_build = True
+                patch_triggered = True
                 break
 
             if upstream_date and datetime.fromisoformat(upstream_date) > datetime.fromisoformat(our_date):
                 needs_build = True
+                patch_triggered = True
 
-        if needs_build:
+        if not patch_triggered and mirror_entries:
+            try:
+                if _mirrors_behind(mirror_entries, net, _built_versions()):
+                    needs_build = True
+            except Exception as exc:
+                epr(f"Mirror version check failed: {exc}")
+
+        if needs_build and patch_triggered:
             changelog_lower = combined_changelog.lower()
             has_apps = False
             for app in entries:
@@ -163,11 +221,14 @@ def check_builds_needed(force_all: bool = False) -> None:
             if has_apps:
                 print(json.dumps(["all"]))
                 return
+        elif needs_build:
+            print(json.dumps(["all"]))
+            return
 
     print(json.dumps([]))
 
 def main() -> None:
-    _require_ci("matrix.py")
+    require_ci("matrix.py")
     match sys.argv[1:]:
         case ["get-matrix"]:
             check_builds_needed()

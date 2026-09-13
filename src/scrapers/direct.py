@@ -16,7 +16,13 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 from src.core.network import NetworkManager
-from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError, _parse_html
+from src.scrapers.base import (
+    AppMetadata,
+    BaseScraper,
+    DownloadResult,
+    ScraperError,
+    _parse_html,
+)
 
 
 class DirectScraperError(ScraperError):
@@ -74,6 +80,9 @@ class DirectScraper(BaseScraper):
         direct_url = self._direct_urls.get(url)
         if not direct_url:
             raise DirectScraperError(f"No direct URL available for '{url}'")
+
+        if version and version not in ("auto", "latest", "nightly") and not re.search(re.escape(version) + r"(?:\D|$)", direct_url):
+            raise DirectScraperError(f"Direct download '{direct_url}' does not contain requested version '{version}'")
 
         is_bundle = direct_url.lower().split("?")[0].endswith((".apkm", ".xapk"))
         out_path = dest.with_suffix(".apkm") if is_bundle else dest

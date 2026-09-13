@@ -21,7 +21,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from src.core.builder import run_build
-from src.core.config import BUILD_DIR, CONFIG_PATH, TEMP_DIR, VALID_ARCHES, AppEntry, load_toml, parse_app_entries, parse_config
+from src.core.config import BUILD_DIR, CONFIG_PATH, ORIGINAL_APK_DIR, TEMP_DIR, VALID_ARCHES, AppEntry, load_toml, parse_app_entries, parse_config
 from src.core.logger import abort, epr, mark_interrupted, pr
 from src.core.network import NetworkManager
 
@@ -79,6 +79,7 @@ def _build(target_app: str | None = None, arch_override: str | None = None) -> i
 
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    ORIGINAL_APK_DIR.mkdir(parents=True, exist_ok=True)
     for cl in TEMP_DIR.glob("*/changelog.md"):
         cl.write_text("", encoding="utf-8")
 
@@ -94,9 +95,10 @@ def _clear() -> int:
             shutil.rmtree(directory)
             cleaned = True
 
-    if (build_md := Path("build.md")).exists():
-        build_md.unlink()
-        cleaned = True
+    for artifact in (Path("build.md"), Path("build.json")):
+        if artifact.exists():
+            artifact.unlink()
+            cleaned = True
 
     pr("Cleaned successfully" if cleaned else "Already clean")
     return 0

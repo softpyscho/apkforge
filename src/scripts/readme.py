@@ -86,7 +86,8 @@ def _version_label(entry, versions_cache: dict[str, str]) -> str:
         encoded_v = urllib.parse.quote(label, safe="")
         return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
     else:
-        encoded_v = urllib.parse.quote(f"v{entry.version}" if not entry.version.startswith("v") else entry.version, safe="")
+        v = versions_cache.get(entry.table) or entry.version
+        encoded_v = urllib.parse.quote(f"v{v}" if not v.startswith("v") else v, safe="")
         return f'![version](https://img.shields.io/badge/version-{encoded_v}-{color}?logo=android&logoColor=white)'
 
 
@@ -131,7 +132,7 @@ def _load_excluded_patches_cache() -> dict[str, list[str]]:
         if p.exists():
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
-                if "excluded_patches" in data and data["excluded_patches"]:
+                if data.get("excluded_patches"):
                     res = {}
                     for k, v in data["excluded_patches"].items():
                         table = k.split("(")[0].strip()
@@ -143,7 +144,7 @@ def _load_excluded_patches_cache() -> dict[str, list[str]]:
     return {}
 
 
-def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: set[str] = None, excluded_cache: dict[str, list[str]] = None) -> str:
+def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: set[str] | None = None, excluded_cache: dict[str, list[str]] | None = None) -> str:
     """Describe which patches are applied."""
     all_includes = []
     all_excludes = []
@@ -303,7 +304,7 @@ def _obtainium_link(entry) -> str:
     encoded_uri = urllib.parse.quote(raw_uri, safe="()*")
     
     deep_link = f"https://apps.obtainium.imranr.dev/redirect?r={encoded_uri}"
-    badge_img = f'![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)'
+    badge_img = '![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)'
     return f"[{badge_img}]({deep_link})"
 
 
@@ -329,7 +330,6 @@ def _apk_sources_label(entry, sources_cache: dict[str, str]) -> str:
     labels = {
         "apkmirror": "APKMirror",
         "uptodown": "Uptodown",
-        "apkpure": "APKPure",
         "github": "GitHub",
         "direct": "Direct",
     }

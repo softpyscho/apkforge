@@ -1,27 +1,35 @@
 <div align="center">
-<a href="#-features"><img src="https://readme-typing-svg.demolab.com/?font=Google+Sans&size=25&pause=1000&color=4500FF&center=true&vCenter=true&random=false&width=550&lines=%F0%9F%93%A6+Pre-built+APKs+from+various+patch+sources"></a>
+<a href="#-features"><img src="https://readme-typing-svg.demolab.com/?font=Google+Sans&size=25&pause=1000&color=4500FF&center=true&vCenter=true&random=false&width=650&lines=%F0%9F%93%A6+Pre-built+APKs+from+various+patch+sources;%F0%9F%A7%A9+Automated+Morphe+patching+%2B+stock+mirroring;%F0%9F%9A%80+Built+daily+by+GitHub+Actions"></a>
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-4500FF?style=flat-square&logo=gnu&logoColor=%23FFFFFF)](LICENSE)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
 <br>
-[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)
-<br>
+[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge#-supported-applications)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge#-supported-applications)
+<br><br>
 
-Here you can download and use applications selected for this repository, which are enhanced with many functionalities that will certainly be useful to you.
+**apkforge** automatically downloads stock Android apps, applies [Morphe](https://github.com/MorpheApp) patch bundles, signs them, and publishes daily releases — plus it mirrors unpatched stock APKs you can install with [Obtainium](https://github.com/ImranR98/Obtainium).
+
+<a href="#-features">Features</a> · <a href="#-supported-applications">Apps</a> · <a href="#%EF%B8%8F-how-it-works">How it works</a> · <a href="#-quick-start">Quick start</a> · <a href="#%EF%B8%8F-configuration">Configuration</a> · <a href="CONTRIBUTING.md">Contributing</a> · <a href="docs/ARCHITECTURE.md">Architecture</a> · <a href="docs/ROADMAP.md">Roadmap</a>
 </div>
 
-## 🔥 Features
+---
 
-- 🛑 **Ad-blocking:** blocks all types of ads (who needs them anyway?).
-- 🚀 **Enhanced features:** squeezes more out of the app.
-- ⭐ **Customization:** personalize the app to fit your needs.
-- 💉 **Optimization:** optimized APKs for performance and size.
-- 🔒 **Persistent:** patched app won't be updated or overwritten by Play Store.
-- 🔄 **Auto-updates:** supports automatic updates through [Obtainium](https://github.com/ImranR98/Obtainium) using individual configs (see app list below).
-- ✨ **And much more!**
+## ✨ Features
 
-## 📋 List of Apps by Patch Source
+| | |
+|:--|:--|
+| 🛑 **Ad-blocking** | Removes ads and trackers across supported apps. |
+| 🚀 **Enhanced features** | Unlocks premium and quality-of-life functionality. |
+| 🎨 **Customization** | Personalise branding, theming, icons and more via patches. |
+| 💉 **Optimized output** | Split bundles are trimmed to your target ABI, `xxhdpi` and English only. |
+| 🔒 **Persistent** | Patched apps are not overwritten or auto-updated by the Play Store. |
+| 🔄 **Auto-updates** | One-tap updates through per-app [Obtainium](https://github.com/ImranR98/Obtainium) configs. |
+| 🪞 **Stock mirroring** | Re-hosts unmodified APKs for apps that have no patches. |
+| 🤖 **Fully automated** | A daily GitHub Actions cron builds, signs and publishes everything. |
+| 🔍 **Update detection** | Only rebuilds when an upstream patch source or stock version actually changes. |
 
-All applications are patched and built automatically via GitHub Actions. Below they are organized by patch source, showing each app and the patches applied.
+## 📦 Supported Applications
+
+All applications are patched and built automatically via GitHub Actions. They are grouped by patch source, with the applied patches listed per app.
 
 <!-- APPS_START -->
 
@@ -141,9 +149,9 @@ All applications are patched and built automatically via GitHub Actions. Below t
 | [![Mixplorer](https://img.shields.io/badge/Mixplorer-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.mixplorer) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v6.71.12-API29-3e9cfb?logo=android&logoColor=white) | [APKMirror](https://www.apkmirror.com/apk/hootan-parsa/mixplorer-hootanparsa) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.mixplorer%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22Mixplorer%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22mixplorer-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22mixplorer-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
 | [![Mix Archive](https://img.shields.io/badge/Mix%20Archive-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.mixplorer.addon.archive) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v3.24-3e9cfb?logo=android&logoColor=white) | [APKMirror](https://www.apkmirror.com/apk/hootan-parsa/mix-archive) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.mixplorer.addon.archive%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22Mix%20Archive%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22mix-archive-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22mix-archive-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
 | [![RedotPay](https://img.shields.io/badge/RedotPay-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.redotpay) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v3.12.0-3e9cfb?logo=android&logoColor=white) | [Direct](https://www.redotpay.com/app-download) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.redotpay%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22RedotPay%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22redotpay-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22redotpay-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
-| [![Duck Detector](https://img.shields.io/badge/Duck%20Detector-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=Duck.Detector) | `all` | ![version](https://img.shields.io/badge/version-vnightly-3e9cfb?logo=android&logoColor=white) | [GitHub](https://github.com/eltavine/Duck-Detector-Refactoring/releases/tag/nightly) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22Duck.Detector%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22Duck%20Detector%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22Duck.Detector%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22Duck.Detector-(%3F%3Av)%3F(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
-| [![WhatsApp](https://img.shields.io/badge/WhatsApp-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.whatsapp) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v2.26.30.xx-3e9cfb?logo=android&logoColor=white) | [Direct](https://www.whatsapp.com/android/) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.whatsapp%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22WhatsApp%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22whatsapp-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22whatsapp-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
-| [![WhatsApp Business](https://img.shields.io/badge/WhatsApp%20Business-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.whatsapp.w4b) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v2.26.30.xx-3e9cfb?logo=android&logoColor=white) | [APKMirror](https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.whatsapp.w4b%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22WhatsApp%20Business%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22whatsapp-business-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22whatsapp-business-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
+| [![Duck Detector](https://img.shields.io/badge/Duck%20Detector-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=Duck.Detector) | `all` | ![version](https://img.shields.io/badge/version-v2026.08.28-c1c8e0c17577-3e9cfb?logo=android&logoColor=white) | [GitHub](https://github.com/eltavine/Duck-Detector-Refactoring/releases/tag/nightly) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22Duck.Detector%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22Duck%20Detector%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22Duck.Detector%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22Duck.Detector-(%3F%3Av)%3F(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
+| [![WhatsApp](https://img.shields.io/badge/WhatsApp-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.whatsapp) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v2.26.34.77-3e9cfb?logo=android&logoColor=white) | [Direct](https://www.whatsapp.com/android/) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.whatsapp%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22WhatsApp%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22whatsapp-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22whatsapp-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
+| [![WhatsApp Business](https://img.shields.io/badge/WhatsApp%20Business-?style=flat-square&logo=&logoColor=%23FFFFFF)](https://play.google.com/store/apps/details?id=com.whatsapp.w4b) | `arm64-v8a` | ![version](https://img.shields.io/badge/version-v2.26.30.85-3e9cfb?logo=android&logoColor=white) | [APKMirror](https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business) | *(None - Stock Mirror)* | [![Add to Obtainium](https://img.shields.io/badge/Add_to_Obtainium-8b5cf6?style=flat-square&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%7B%22id%22%3A%22com.whatsapp.w4b%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge%2Freleases%2Flatest%22%2C%22author%22%3A%22github.com%22%2C%22name%22%3A%22WhatsApp%20Business%22%2C%22installedVersion%22%3A%22%22%2C%22latestVersion%22%3A%22%22%2C%22apkUrls%22%3A%22%5B%5D%22%2C%22otherAssetUrls%22%3A%22%5B%5D%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22intermediateLink%5C%22%3A%5B%5D%2C%5C%22customLinkFilterRegex%5C%22%3A%5C%22whatsapp-business-mirror%5C%22%2C%5C%22filterByLinkText%5C%22%3Afalse%2C%5C%22matchLinksOutsideATags%5C%22%3Afalse%2C%5C%22skipSort%5C%22%3Afalse%2C%5C%22reverseSort%5C%22%3Afalse%2C%5C%22sortByLastLinkSegment%5C%22%3Afalse%2C%5C%22versionExtractWholePage%5C%22%3Afalse%2C%5C%22requestHeader%5C%22%3A%5B%7B%5C%22requestHeader%5C%22%3A%5C%22User-Agent%3A%20Mozilla%2F5.0%20(Linux%3B%20Android%2010%3B%20K)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F114.0.0.0%20Mobile%20Safari%2F537.36%5C%22%7D%5D%2C%5C%22defaultPseudoVersioningMethod%5C%22%3A%5C%22partialAPKHash%5C%22%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22whatsapp-business-mirror-v(%5B0-9a-zA-Z._-%5D%2B)%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%221%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%7D%22%2C%22lastUpdateCheck%22%3A1786344697135921%2C%22pinned%22%3Afalse%2C%22categories%22%3A%5B%5D%2C%22releaseDate%22%3Anull%2C%22changeLog%22%3Anull%2C%22overrideSource%22%3A%22HTML%22%2C%22allowIdChange%22%3Afalse%2C%22pendingRepoRenameUrl%22%3Anull%7D) |
 
 </div>
 
@@ -152,61 +160,183 @@ All applications are patched and built automatically via GitHub Actions. Below t
 
 ## ⚙️ How It Works
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     apkforge Build Pipeline                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. 🔍 Check for Updates    CI checks upstream patch sources    │
-│                              for new releases daily at 10 AM    │
-│                                                                 │
-│  2. 📥 Fetch APKs           Prioritized source fallback:       │
-│                              Cache → GitHub → APKMirror →       │
-│                              Uptodown → APKPure                 │
-│                                                                 │
-│  3. 🧩 Apply Patches        Auto-detect recommended version,   │
-│                              apply all patches from config      │
-│                                                                 │
-│  4. ✍️  Sign APK             Sign with project keystore         │
-│                                                                 │
-│  5. 📦 Publish Release      Upload to GitHub Releases with     │
-│                              changelogs & Telegram notification │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A([Daily cron / manual dispatch]) --> B{Upstream updated?}
+    B -- no --> Z([Skip])
+    B -- yes --> C[Fetch stock APK]
+    C --> D{Patched or mirror?}
+    D -- mirror --> E[Trim bundle · copy to build/]
+    D -- patched --> F[Apply Morphe patches]
+    F --> G[Sign APK]
+    E --> H[Upload to GitHub Release]
+    G --> H
+    H --> I[Update README · Obtainium · Telegram]
 ```
 
-## 🔐 Verifying Authenticity
+1. **Check for updates** — the CI compares upstream patch sources (and stock versions of mirror apps) against the last release.
+2. **Fetch stock APKs** — each app's configured sources are tried in order, with a local cache checked first.
+3. **Apply patches** — auto-detects the recommended compatible version, applies the configured patch bundles and retries while excluding failing patches.
+4. **Optimize & sign** — split bundles are trimmed, then the APK is signed with your keystore.
+5. **Publish** — APKs, changelogs and per-app patch lists are uploaded to a GitHub Release, and the README/Obtainium export is refreshed.
 
-To ensure that the APK files you download are genuinely compiled by this project and haven't been tampered with, you can verify the APK's certificate fingerprint. All official releases share the following SHA-256 fingerprint:
-```text
-1894fee4df44d1823f3666db4743566d043dd72cbc13566433c1908270a4be10
+## 🚀 Quick Start
+
+**Requirements:** [Git](https://git-scm.com/downloads), [Python 3.13+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/getting-started/installation/) and [Java 21+](https://adoptium.net/temurin/releases/?version=21).
+
+```bash
+git clone --depth 1 https://github.com/softpyscho/apkforge.git
+cd apkforge
+
+uv run main.py                    # build every enabled app
+uv run main.py Reddit             # build a single app
+uv run main.py Reddit arm64-v8a   # build with an arch override
+uv run main.py clear              # remove build/, temp/ and build.md
+uv run python -m unittest discover -s tests -t .   # run the test suite
 ```
 
-## 📚 Documentation & Contributing
+Build artifacts are written to `build/`; the report to `build.json`; the log to `build.md`; and cached stock APKs to `unmodified-apks/`.
 
-For full configuration reference, setup and contributing guide, see [CONTRIBUTING.md](CONTRIBUTING.md).
+> [!IMPORTANT]
+> Without a signing keystore, the Morphe CLI falls back to its built-in debug key. On CI that produces a **different signature on every release**, which breaks app updates. Configure a keystore (see below) for real deployments.
 
-## ⚖️ License & Copyright
+## 🔑 Signing & Updates
 
-**Copyright (C) 2026 softpyscho**
+Signing is required for updates to work — Android only accepts an update signed with the same key as the installed app.
 
-This project is open-source and distributed under the **GNU GPLv3** license. You are free to use, modify, and redistribute this software, but you **must** keep the original copyright notices intact.
+Create a `.env` file in the project root:
 
-- 📄 **Full license:** See the [LICENSE](LICENSE) file.
-- 👥 **Contributors:** See the [AUTHORS](AUTHORS) file for the full list of copyright holders.
-- 🎨 **Assets:** Base icon designs by [kazimmt](https://github.com/kazimmt). Modified for this project. See [icons/README.md](icons/README.md) for details.
+```env
+KEYSTORE_BASE64=<base64-encoded keystore>
+KEYSTORE_PASS=<keystore password>
+KEYSTORE_ALIAS=<keystore alias>
+```
+
+Encode an existing keystore with `base64 -w 0 my.keystore`. On GitHub Actions, set the same names as repository secrets.
+
+Resolution order when signing:
+
+1. `KEYSTORE_BASE64` + `KEYSTORE_PASS` + `KEYSTORE_ALIAS` (recommended).
+2. A local `morphe.keystore` in the project root, if present. This file is **git-ignored** and never shipped with the repository.
+3. The CLI's built-in debug keystore (not recommended — new signature per release).
+
+> [!NOTE]
+> Earlier versions of apkforge verified the downloaded stock APK against a `sig.txt` fingerprint list and shipped a shared public `morphe.keystore` plus `apksigner.jar`. That verification layer and all of its dependencies have been removed; only signing remains.
+
+## 🗂️ Supported Download Sources
+
+| Source | Used for | Configuration key |
+|:-------|:---------|:------------------|
+| **Direct** | Vendor download pages / direct APK links | `direct-dlurl` |
+| **GitHub Releases** | APKs published on GitHub | `github-dlurl` |
+| **APKMirror** | Broad catalogue with multiple variants | `apkmirror-dlurl` |
+| **Uptodown** | Broad catalogue, XAPK support | `uptodown-dlurl` |
+
+APKPure support was removed: its page layout could not be reliably parsed and no build ever succeeded through it. See the [roadmap](docs/ROADMAP.md) for re-adding it with a verified implementation.
+
+## ⚙️ Configuration
+
+Everything is configured in [`config.toml`](config.toml). Top-level keys are defaults inherited by every app; each app is a TOML table. See [CONTRIBUTING.md](CONTRIBUTING.md) for a guided walkthrough.
+
+| 🔑 Key | 📝 Description | 🔤 Default | 📌 Scope |
+|:------:|:--------------|:----------:|:--------:|
+| `parallel-jobs` | Number of concurrent builds | `CPU count` | Global |
+| `brand` | Brand name used in output filenames | `Morphe` | Global / Per-app |
+| `cli-version` | Morphe CLI version (`latest`, `dev`, or a tag) | `latest` | Global / Per-app |
+| `cli-source` | CLI repository (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` | Global / Per-app |
+| `app-name` | Display name used in the filename and build label | table name | Per-app |
+| `pkg-name` | Play Store package identifier | fetched from source metadata | Per-app |
+| `arch` | Target architecture (`all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`) | `all` | Per-app |
+| `dpi` | Preferred screen density when variants exist | `""` (any) | Per-app |
+| `version` | Target version: `auto`, `latest`, a fixed version, or a wildcard like `2.26.30.xx` | `auto` | Per-app |
+| `changelog-keywords` | Keywords that decide whether an app is rebuilt from release notes | `[]` | Per-app |
+| `apkmirror-dlurl` | APKMirror page URL | `-` | Per-app |
+| `uptodown-dlurl` | Uptodown page URL | `-` | Per-app |
+| `github-dlurl` | GitHub Releases page URL | `-` | Per-app |
+| `direct-dlurl` | Direct download page / APK URL | `-` | Per-app |
+| `mirror` | Re-host the stock APK unpatched | `false` | Per-app |
+| `keep-filename` | For mirrors: keep the source filename (sanitized) | `false` | Per-app |
+| `badge-color` | Hex colour for the README badge | `""` | Per-app |
+| `badge-icon` | [simple-icons](https://simpleicons.org/) slug for the README badge | `""` | Per-app |
+| `exclusive-patches` | Apply only the patches listed under `[App.patches]` | `false` | Per-app |
+| `patcher-args` | Extra arguments passed straight to the Morphe CLI | `-` | Per-app |
+| `enabled` | Set to `false` to skip the entry | `true` | Per-app |
+
+**Patch table** — `[AppName.patches]` maps a patch source to what should be applied:
+
+| Field | Description | Default |
+|:-----:|:------------|:-------:|
+| key | Patch source (`github:owner/repo` or `gitlab:owner/repo`) | — |
+| `version` | Bundle version to fetch (`latest`, `dev`, or a tag) | `latest` |
+| `include` | Patch names to apply (empty = all defaults) | `[]` |
+| `exclude` | Patch names to disable | `[]` |
+
+```toml
+[Reddit]
+pkg-name = "com.reddit.frontpage"
+version = "auto"
+arch = "arm64-v8a"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/redditinc/reddit"
+patcher-args = "-e 'Custom branding name for Reddit' -OappName='Reddit'"
+
+[Reddit.patches]
+"github:MorpheApp/morphe-patches" = []
+```
+
+## 📲 Obtainium
+
+Every app has a one-click **Add to Obtainium** badge in the [app list](#-supported-applications). A complete import file is regenerated on every build as [`obtainium.json`](obtainium.json) — import it in Obtainium via *Add App → Import/Export → Import from file* to track every mirrored and patched app at once.
+
+## ❓ FAQ & Troubleshooting
+
+<details>
+<summary><b>Why is an app missing or out of date?</b></summary>
+
+The daily build only publishes an app when its upstream patch source (or stock version) changed, or when a build succeeds. Check the latest release assets and the workflow logs; failed builds are reported in the release notes.
+</details>
+
+<details>
+<summary><b>An app failed to install after updating.</b></summary>
+
+The signature changed. Uninstall the previous build (or back up its data) before installing. To keep updates working long-term, use a consistent personal keystore.
+</details>
+
+<details>
+<summary><b>A patch failed and was skipped.</b></summary>
+
+The builder excludes the failing patch and retries (up to 5 times). Excluded patches are annotated in the release notes and the app list.
+</details>
+
+<details>
+<summary><b>How do I add or remove an app?</b></summary>
+
+Edit `config.toml` and open a pull request. The README table updates automatically — see [CONTRIBUTING.md](CONTRIBUTING.md).
+</details>
+
+## 🤝 Contributing
+
+Pull requests are welcome! Read the [contributing guide](CONTRIBUTING.md), check the [architecture notes](docs/ARCHITECTURE.md), and see the [roadmap](docs/ROADMAP.md) for planned improvements.
+
+Bug in the **script**? Use the [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml). Issue with a **built APK**? Use the [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml).
+
+## ⚖️ License & Credits
+
+**Copyright (C) 2026 softpyscho** — licensed under the **GNU GPLv3**. You may modify and redistribute this software, but you must keep the original copyright notices intact. See [LICENSE](LICENSE) and [AUTHORS](AUTHORS).
+
 - 🔗 **Canonical source:** [github.com/softpyscho/apkforge](https://github.com/softpyscho/apkforge)
+- 💉 **Patches & CLI:** [MorpheApp](https://github.com/MorpheApp)
+- 🧱 **Foundation:** a complete Python rewrite inspired by [j-hc](https://github.com/j-hc)'s ReVanced build scripts.
+- 🎨 **Assets:** base icon designs by [kazimmt](https://github.com/kazimmt); see [icons/README.md](icons/README.md).
 
 ## ⚠️ Disclaimer
 
-- This project is **not affiliated with any patch creators mentioned here**, and is intended for educational & personal use only.
-- All builds are done using **publicly available tools**. This repository simply automates the process for convenience.
-- Everything happens through the **public GitHub Actions** to ensure security and transparency. For maximum security, you can always build the applications yourself using the provided source code or official methods.
-- The build code is a **complete Python rewrite** based on an adaptation that was first implemented by *[j-hc](https://github.com/j-hc)*. All credits go to him for laying down the initial foundation.
-- This repository only provides pre-built APKs. If a build fails due to upstream app or patch changes, please report it to the patch creators or wait for an update.
+- This project is **not affiliated with any patch creators** and is intended for educational and personal use only.
+- All builds use **publicly available tools**; the repository merely automates the process.
+- Everything runs through **public GitHub Actions** for transparency. For maximum security, build the apps yourself from this source.
+- This repository only distributes pre-built APKs. If a build breaks due to upstream app or patch changes, please report it to the patch creators or wait for an update.
 
 ---
 
-<p align="center"><i>Maintained with ❤️ by <a href="https://github.com/softpyscho">softpyscho</a></i></p>
-
-
+<div align="center">
+<i>Maintained with ❤️ by <a href="https://github.com/softpyscho">softpyscho</a></i>
+</div>

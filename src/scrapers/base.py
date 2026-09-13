@@ -55,3 +55,21 @@ class BaseScraper(ABC):
     @abstractmethod
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
         pass
+
+
+def make_scraper(source: str, net: NetworkManager) -> BaseScraper:
+    match source:
+        case "apkmirror":
+            from src.scrapers.apkmirror import APKMirrorScraper
+            return APKMirrorScraper(net)
+        case "github":
+            from src.scrapers.github import GitHubScraper
+            return GitHubScraper(net)
+        case "uptodown":
+            from src.scrapers.uptodown import UptodownScraper
+            return UptodownScraper(net)
+        case "direct":
+            from src.scrapers.direct import DirectScraper
+            return DirectScraper(net)
+        case _:
+            raise ValueError(f"Unknown APK source: {source!r}")

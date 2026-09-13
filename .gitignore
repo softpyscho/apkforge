@@ -5,6 +5,8 @@ __pycache__
 /temp
 /build
 /logs
-build.md*.apk
+build.md
+build.json
+morphe.keystore
 *.apk
 unmodified-apks/

@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write # <-- Added permission to allow cache deletion
+      actions: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
@@ -93,7 +93,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Restore stock APKs
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: unmodified-apks/
           key: apk-cache-${{ matrix.id }}-${{ github.run_id }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Save stock APKs
         if: success()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: unmodified-apks/
           key: apk-cache-${{ matrix.id }}-${{ hashFiles('unmodified-apks/*') }}
@@ -138,13 +138,7 @@ jobs:
           TAG: ${{ needs.prepare.outputs.version }}
         run: |
           shopt -s nullglob
-          for f in ./build/*.apk; do
-            clean_f=$(echo "$f" | tr -d '[]()' | tr ' ' '_')
-            if [[ "$f" != "$clean_f" ]]; then
-              mv "$f" "$clean_f"
-            fi
-          done
-          apks=(./build/*.apk)
+          apks=(./build/*.apk ./build/*.apkm)
           if [[ ${#apks[@]} -eq 0 ]]; then
             echo "No APKs to upload, skipping"
             exit 0
@@ -230,7 +224,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.version }}
         run: |
-          has=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(endswith(".apk"))] | length > 0')
+          has=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name | select(endswith(".apk") or endswith(".apkm"))] | length > 0')
           echo "has_apks=${has}" >> "$GITHUB_OUTPUT"
 
       - name: Download logs and patches from draft release
@@ -244,7 +238,7 @@ jobs:
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "patches_info-*.json" --dir patches || true
           uv run python -c "import json, glob, pathlib; merged = {}; [merged.update(json.loads(pathlib.Path(f).read_text())) for f in glob.glob('patches/*.json')]; pathlib.Path('patches_info.json').write_text(json.dumps(merged, indent=2))"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "versions_info-*.json" --dir versions || true
-          uv run python -c "import json, glob, pathlib; merged = {'success':[]}; [merged['success'].extend(json.loads(pathlib.Path(f).read_text()).get('success', [])) for f in glob.glob('versions/*.json')]; pathlib.Path('versions_info.json').write_text(json.dumps(merged, indent=2))"
+          uv run python -c "import json, glob, pathlib; merged = {'success': [], 'excluded_patches': {}}; [ (merged['success'].extend(d.get('success', [])), merged['excluded_patches'].update(d.get('excluded_patches', {}))) for d in (json.loads(pathlib.Path(f).read_text()) for f in glob.glob('versions/*.json')) ]; pathlib.Path('versions_info.json').write_text(json.dumps(merged, indent=2))"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.name | startswith("build-") or startswith("patches_info-") or startswith("versions_info-")) | .apiUrl' | xargs -I{} gh api --method DELETE "{}"
 
       - name: Combine logs and finalize release
@@ -277,6 +271,6 @@ jobs:
           uv run python -m src.scripts.readme update
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add patches_info.json versions_info.json README.md
+          git add patches_info.json versions_info.json obtainium.json README.md
           git diff --cached --quiet || git commit -m "docs: update patches and versions info [skip ci]"
           git push || true

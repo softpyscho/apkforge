@@ -44,3 +44,8 @@ def wpr(msg: str) -> None:
 def abort(msg: str) -> Never:
     epr(f"ABORT: {msg}")
     sys.exit(1)
+
+def require_ci(script: str) -> None:
+    """Abort unless running inside GitHub Actions."""
+    if not IS_GITHUB:
+        abort(f"'{script}' is only available in GitHub Actions")

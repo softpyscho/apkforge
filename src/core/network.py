@@ -68,6 +68,11 @@ class NetworkManager:
         self._dest_locks: dict[Path, threading.Lock] = {}
         self._dest_mu = threading.Lock()
 
+    @property
+    def gh_headers(self) -> dict[str, str]:
+        """GitHub API headers (may include an Authorization token)."""
+        return dict(self._gh_headers)
+
     def get(self, url: str, headers: dict[str, str] | None = None) -> str:
         netloc = urlparse(url).netloc
         last_exc: Exception | None = None

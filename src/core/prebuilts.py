@@ -18,29 +18,19 @@ from pathlib import Path
 from src.core.config import TEMP_DIR
 from src.core.logger import pr, wpr
 from src.core.network import NetworkManager
+from src.core.versions import highest_tag, version_sort_key
 
-APKSIGNER: Path = Path("bin/apksigner.jar")
 _KNOWN_PREFIXES = ("gitlab:", "github:")
 
 
 class PrebuiltsError(Exception):
     pass
 
-def _ver_key(ver: str) -> tuple[int, ...]:
-    base = ver.split("-")[0]
-    return tuple(int(x) for x in re.findall(r"\d+", base)) or (0,)
-
 def _strip_src_prefix(src: str) -> str:
     for prefix in _KNOWN_PREFIXES:
         if src.startswith(prefix):
             return src[len(prefix):]
     raise PrebuiltsError(f"Unknown source scheme in {src!r}, expected one of {_KNOWN_PREFIXES}")
-
-def get_highest_ver(versions: list[str]) -> str:
-    clean = [v.strip() for v in versions if v.strip()]
-    if not clean:
-        raise ValueError("Empty version list")
-    return max(clean, key=_ver_key)
 
 def fetch_cli(cli_src: str, cli_ver: str, net: NetworkManager) -> Path:
     cli_org = _strip_src_prefix(cli_src).split("/")[0]
@@ -103,16 +93,16 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
 
     release = None
     if ver == "dev":
-        releases = json.loads(net.get(base_url) if gitlab else net.get(base_url, headers=net._gh_headers))
-        ver = get_highest_ver([r["tag_name"] for r in releases if r.get("tag_name")])
+        releases = json.loads(net.get(base_url) if gitlab else net.get(base_url, headers=net.gh_headers))
+        ver = highest_tag([r["tag_name"] for r in releases if r.get("tag_name")])
     elif ver == "latest":
         latest_url = f"{base_url}/permalink/latest" if gitlab else f"{base_url}/latest"
         try:
-            release = json.loads(net.get(latest_url) if gitlab else net.get(latest_url, headers=net._gh_headers))
+            release = json.loads(net.get(latest_url) if gitlab else net.get(latest_url, headers=net.gh_headers))
             ver = release.get("tag_name", "")
         except Exception:
             if not gitlab:
-                releases = json.loads(net.get(f"{base_url}?per_page=1", headers=net._gh_headers))
+                releases = json.loads(net.get(f"{base_url}?per_page=1", headers=net.gh_headers))
                 if isinstance(releases, list) and releases:
                     release = releases[0]
                     ver = release.get("tag_name", "")
@@ -125,7 +115,7 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
 
     if release is None:
         release_url = f"{base_url}/{ver}" if gitlab else f"{base_url}/tags/{ver}"
-        release = json.loads(net.get(release_url) if gitlab else net.get(release_url, headers=net._gh_headers))
+        release = json.loads(net.get(release_url) if gitlab else net.get(release_url, headers=net.gh_headers))
 
     raw_assets = release.get("assets", {}).get("links", []) if gitlab else release.get("assets", [])
     asset = _get_target_asset(raw_assets, ext, src, ver)
@@ -139,7 +129,7 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
     if gitlab:
         net.download(asset_url, file)
     else:
-        net.download(asset_url, file, headers=net._gh_headers | {"Accept": "application/octet-stream"})
+        net.download(asset_url, file, headers=net.gh_headers | {"Accept": "application/octet-stream"})
 
     tag_name = release.get("tag_name", "")
     return file, _build_changelog(tag, org, asset["name"], tag_name, gitlab, clean_src)
@@ -151,7 +141,7 @@ def _find_cached(dir_path: Path, name_ver: str, ext: str) -> Path | None:
         if not f.is_file() or f.name.startswith("tmp."):
             continue
         candidates.append(f)
-    return max(candidates, key=lambda f: _ver_key(f.name), default=None)
+    return max(candidates, key=lambda f: version_sort_key(f.name), default=None)
 
 def _tag_from_filename(file: Path) -> str:
     m = re.search(r"-(\d[\w.]*)(?:-[^.]+)?\.\w+$", file.name)

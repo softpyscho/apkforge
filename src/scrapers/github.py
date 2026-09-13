@@ -39,7 +39,7 @@ class GitHubScraper(BaseScraper):
         api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}"
         try:
             try:
-                release = json.loads(self.net.get(api_url, headers=self.net._gh_headers))
+                release = json.loads(self.net.get(api_url, headers=self.net.gh_headers))
             except NetworkError:
                 release = json.loads(self.net.get(api_url, headers={}))
         except ResourceNotFoundError:
@@ -92,7 +92,7 @@ class GitHubScraper(BaseScraper):
 
         is_bundle = asset["name"].endswith(".apkm")
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
-        headers = self.net._gh_headers | {"Accept": "application/octet-stream"} if self.net._gh_headers else {"Accept": "application/octet-stream"}
+        headers = self.net.gh_headers | {"Accept": "application/octet-stream"} if self.net.gh_headers else {"Accept": "application/octet-stream"}
         try:
             self.net.download(asset["browser_download_url"], out_path, headers=headers)
         except NetworkError:

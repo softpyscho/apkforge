@@ -78,9 +78,13 @@ class APKMirrorScraper(BaseScraper):
 
         soup_dl = _parse_html(release_html)
         btn = soup_dl.select_one("a.btn")
+        if not btn or not btn.get("href"):
+            raise APKMirrorError("Download button not found on release page")
         btn_url = urljoin("https://www.apkmirror.com", btn["href"])
         soup_final = _parse_html(self.net.get(btn_url))
         dl_link = soup_final.select_one("span > a[rel=nofollow]")
+        if not dl_link or not dl_link.get("href"):
+            raise APKMirrorError("Final download link not found on page")
         final_url = urljoin("https://www.apkmirror.com", dl_link["href"])
         out_path = dest.with_suffix(".apkm") if is_bundle else dest
         self.net.download(final_url, out_path)

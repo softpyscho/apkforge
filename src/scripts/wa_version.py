@@ -17,8 +17,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from src.core.logger import pr
-
 WAENHANCER_ARRAYS_URL = "https://raw.githubusercontent.com/Dev4Mod/WaEnhancer/master/app/src/main/res/values/arrays.xml"
 CONFIG_PATH = Path("config.toml")
 
@@ -42,8 +40,32 @@ def fetch_recommended_wa_versions() -> tuple[str, str]:
     return wpp_ver, biz_ver
 
 
+def _to_wildcard(ver: str) -> str:
+    """Convert an exact 4-part version to a wildcard patch version (e.g. 2.26.30.85 -> 2.26.30.xx)."""
+    parts = ver.strip().split(".")
+    if len(parts) >= 4:
+        parts[-1] = "xx"
+        return ".".join(parts)
+    return ver
+
+
+def _patch_version_line(content: str, table: str, new_ver: str) -> tuple[str, bool]:
+    """Replace the `version` line inside the [table] block, preserving every other key."""
+    block_re = re.compile(rf"^\[{re.escape(table)}\](?:\r?\n(?!\[).*)*", re.MULTILINE)
+    m = block_re.search(content)
+    if not m:
+        return content, False
+
+    block = m.group(0)
+    new_block, count = re.subn(r'(?m)^(\s*version\s*=\s*).*$', rf'\1"{new_ver}"', block, count=1)
+    if not count:
+        return content, False
+
+    return content[: m.start()] + new_block + content[m.end() :], True
+
+
 def update_config_toml() -> None:
-    """Fetch WaEnhancer recommended versions and update WhatsApp sections in config.toml."""
+    """Fetch WaEnhancer recommended versions and update the WhatsApp version lines in config.toml."""
     wpp_ver, biz_ver = fetch_recommended_wa_versions()
 
     if not CONFIG_PATH.exists():
@@ -51,46 +73,18 @@ def update_config_toml() -> None:
         return
 
     content = CONFIG_PATH.read_text(encoding="utf-8")
+    new_content = content
+    changed = False
+    for table, ver in (("WhatsApp", _to_wildcard(wpp_ver)), ("WhatsApp-Business", _to_wildcard(biz_ver))):
+        new_content, updated = _patch_version_line(new_content, table, ver)
+        if updated:
+            print(f"[+] Updated [{table}] version to '{ver}' in config.toml")
+            changed = True
+        else:
+            print(f"[!] Could not find [{table}] or its 'version' key in config.toml, skipping")
 
-    # WhatsApp entry
-    wa_entry = (
-        f"[WhatsApp]\n"
-        f'app-name = "WhatsApp"\n'
-        f"mirror = true\n"
-        f'version = "{wpp_ver}"\n'
-        f'arch = "arm64-v8a"\n'
-        f'pkg-name = "com.whatsapp"\n'
-        f'direct-dlurl = "https://www.whatsapp.com/android/"\n'
-        f'apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"\n'
-        f'uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"\n'
-        f'apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"'
-    )
-
-    # WhatsApp Business entry
-    wa_biz_entry = (
-        f"[WhatsApp-Business]\n"
-        f'app-name = "WhatsApp Business"\n'
-        f"mirror = true\n"
-        f'version = "{biz_ver}"\n'
-        f'arch = "arm64-v8a"\n'
-        f'pkg-name = "com.whatsapp.w4b"\n'
-        f'apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/"\n'
-        f'uptodown-dlurl = "https://whatsapp-business.en.uptodown.com/android"\n'
-        f'apkpure-dlurl = "https://apkpure.com/whatsapp-business/com.whatsapp.w4b"'
-    )
-
-    if "[WhatsApp]" in content:
-        content = re.sub(r"\[WhatsApp\].*?(?=\n\[|\Z)", wa_entry, content, flags=re.DOTALL)
-    else:
-        content = content.rstrip() + f"\n\n{wa_entry}\n"
-
-    if "[WhatsApp-Business]" in content:
-        content = re.sub(r"\[WhatsApp-Business\].*?(?=\n\[|\Z)", wa_biz_entry, content, flags=re.DOTALL)
-    else:
-        content = content.rstrip() + f"\n\n{wa_biz_entry}\n"
-
-    CONFIG_PATH.write_text(content, encoding="utf-8")
-    print("[+] Successfully updated config.toml with WhatsApp and WhatsApp Business entries.")
+    if changed and new_content != content:
+        CONFIG_PATH.write_text(new_content, encoding="utf-8")
 
 
 if __name__ == "__main__":

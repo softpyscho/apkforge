@@ -1,140 +1,155 @@
 <div align="center">
-<a href="#-features"><img src="https://readme-typing-svg.demolab.com/?font=Google+Sans&size=25&pause=1000&color=4500FF&center=true&vCenter=true&random=false&width=550&lines=%F0%9F%93%A6+Pre-built+APKs+from+various+patch+sources"></a>
+<a href="#-development-setup"><img src="https://readme-typing-svg.demolab.com/?font=Google+Sans&size=25&pause=1000&color=4500FF&center=true&vCenter=true&random=false&width=600&lines=%F0%9F%9B%A0%EF%B8%8F+Contributing+to+apkforge;%E2%9A%99%EF%B8%8F+Setup+%C2%B7+Configuration+%C2%B7+Architecture"></a>
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
-<br>
-[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge#-list-of-apps-in-this-repository)
-<br>
+[![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![Ruff](https://img.shields.io/badge/Lint-ruff-4500FF?style=flat-square&logo=ruff&logoColor=%23FFFFFF)](https://docs.astral.sh/ruff/)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
 
-Here you will find a step-by-step technical guide on how to set up your environment, run the patching script, customize the build configuration, and contribute to the project's development.
+A practical guide to setting up apkforge, running builds, configuring apps and contributing code.
 </div>
 
-## 💻 Build Locally
+## 📖 Contents
 
-1. 📋 **Requirements**:
+- [Development setup](#-development-setup)
+- [Running builds](#-running-builds)
+- [Configuration reference](#%EF%B8%8F-configuration-reference)
+- [Adding an app or patch source](#-adding-an-app-or-patch-source)
+- [Signing](#-signing)
+- [Project layout](#-project-layout)
+- [Testing & linting](#-testing--linting)
+- [CI overview](#-ci-overview)
+- [Pull requests](#-pull-requests)
+
+## 💻 Development setup
+
+**Requirements**
 
 - [Git](https://git-scm.com/downloads)
-- [Python](https://www.python.org/downloads/latest/python3.13)
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- [Java](https://adoptium.net/temurin/releases?version=21&os=any&arch=any)
+- [Python 3.13+](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — manages the virtualenv and dependencies
+- [Java 21+](https://adoptium.net/temurin/releases/?version=21) — required by the Morphe CLI
 
-2. 📥 **Installation**:
+**Install**
 
 ```bash
 git clone --depth 1 https://github.com/softpyscho/apkforge.git
 cd apkforge
+uv sync
 ```
 
-No further setup needed, as `uv` handles the Python environment and dependencies automatically.
+`uv` creates `.venv` and installs the locked dependencies automatically. No further setup is required.
 
-3. ▶️ **Running**:
+## ▶️ Running builds
 
 ```bash
-uv run main.py # build all apps
-uv run main.py SomeApp # build a specific app
-uv run main.py SomeApp arm64-v8a # build with arch override
-uv run main.py clear # remove build/, temp/ and build.md
+uv run main.py                    # build all enabled apps
+uv run main.py SomeApp            # build a single app (by table name)
+uv run main.py SomeApp arm64-v8a  # build with an architecture override
+uv run main.py clear              # delete build/, temp/, build.md and build.json
 ```
 
-Output APKs are saved to `build/`.
+| Output | Description |
+|:-------|:------------|
+| `build/` | Built `.apk` / `.apkm` artifacts |
+| `build.json` | Machine-readable build report |
+| `build.md` | Human-readable build log |
+| `unmodified-apks/` | Cached stock APKs and sidecar `.src` / `.orig` metadata |
+| `temp/` | Morphe CLI jars, patch bundles and scratch files |
 
-## ⚙️ Configuration
+## ⚙️ Configuration reference
 
-All configuration lives in `config.toml` in the project root. Top-level keys define defaults inherited by every app entry. Each app is a TOML table.
+All configuration lives in [`config.toml`](config.toml). Top-level keys are defaults inherited by every app entry; each app is a TOML table.
+
+### Global keys
+
+| 🔑 Key | 📝 Description | 🔤 Default |
+|:------:|:--------------|:----------:|
+| `parallel-jobs` | Number of builds to run concurrently | CPU count (2 on CI) |
+| `brand` | Default brand used in output filenames | `Morphe` |
+| `cli-version` | Morphe CLI version (`latest`, `dev`, or a specific tag) | `latest` |
+| `cli-source` | CLI repository (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` |
+
+### Per-app keys
+
+| 🔑 Key | 📝 Description | 🔤 Default |
+|:------:|:--------------|:----------:|
+| `app-name` | Display name used in the filename and build label | table name with hyphens → spaces |
+| `pkg-name` | Play Store package identifier (used for metadata + filenames) | fetched from source metadata |
+| `brand` | Overrides the global `brand` for this app | global `brand` |
+| `arch` | Target architecture: `all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86` | `all` |
+| `dpi` | Preferred screen density when a source offers variants | `""` (any) |
+| `version` | `auto`, `latest`, a fixed version, or a wildcard like `2.26.30.xx` | `auto` |
+| `changelog-keywords` | Rebuild this app only when these keywords appear in upstream notes | `[]` |
+| `apkmirror-dlurl` | APKMirror page URL | `-` |
+| `uptodown-dlurl` | Uptodown page URL | `-` |
+| `direct-dlurl` | Direct download page or APK URL | `-` |
+| `github-dlurl` | GitHub Releases page URL | `-` |
+| `mirror` | Re-host the stock APK without patching | `false` |
+| `keep-filename` | Mirrors: keep the source filename (sanitized for URLs) | `false` |
+| `badge-color` | Hex colour for the README badge | `""` |
+| `badge-icon` | simple-icons slug for the README badge | `""` |
+| `exclusive-patches` | Apply only the patches listed in `[App.patches]` | `false` |
+| `patcher-args` | Extra arguments passed directly to the Morphe CLI | `-` |
+| `enabled` | Set to `false` to skip the entry | `true` |
+
+### Patch table — `[AppName.patches]`
+
+| Field | Description | Default |
+|:-----:|:------------|:-------:|
+| key | Patch source (`github:owner/repo` or `gitlab:owner/repo`) | — |
+| `version` | Bundle version to fetch (`latest`, `dev`, or a tag) | `latest` |
+| `include` | Patch names to apply (empty list = all defaults) | `[]` |
+| `exclude` | Patch names to disable | `[]` |
+
+Each `(source, version)` pair is fetched once and reused across every app that references it.
+
+### Version selection
+
+- `auto` — highest version supported by the **stable** patches.
+- `latest` — highest version supported by patches, including experimental ones.
+- `2.26.30.xx` — **wildcard**: newest available version matching that prefix, falling back to the newest overall if nothing matches.
+- `1.2.3` — pinned: exactly that version, or a source-specific fallback when unavailable.
+
+Value order matters: sources are tried in the order their `*-dlurl` keys appear in the table, after the local cache.
+
+## ➕ Adding an app or patch source
+
+No workflow changes are needed — the daily cron in `.github/workflows/ci.yml` scans `config.toml` and builds every enabled app automatically.
+
+**Patched app** — add a table with download URLs and a `.patches` sub-table:
 
 ```toml
 [SomeApp]
-apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/app"
-# uptodown-dlurl = "https://app.en.uptodown.com/android"
-# github-dlurl = "https://github.com/owner/repo/releases/tag/app"
+app-name = "Some App"
+pkg-name = "com.example.someapp"
+version = "auto"
+arch = "arm64-v8a"
+apkmirror-dlurl = "https://www.apkmirror.com/apk/inc/some-app/"
+uptodown-dlurl = "https://some-app.en.uptodown.com/android"
 
 [SomeApp.patches]
-# Simple form - fetches latest version, applies listed patches
-"github:owner/some-patches" = ["Patch name A", "Patch name B"]
-
-# Full form - pin a specific version and/or list patches to include
-"github:owner/some-other-patches" = { version = "v1.2.3", include = ["Patch name C"] }
+"github:owner/some-patches" = { version = "latest", include = ["Patch A"] }
 ```
 
-1. 📱 **Available options**:
+**Unpatched mirror** — set `mirror = true` and provide only download URLs:
 
-| 🔑 Key | 📝 Description | 🔤 Default | 📌 Scope |
-|:------:|:--------------:|:----------:|:--------:|
-| `parallel-jobs` | Number of concurrent builds | `CPU count` | Global |
-| `brand` | Used in output filenames | `Morphe` | Global / Per-app |
-| `release-group` | Groups apps into separate releases (maps to release tag suffix and CI job) | `brand` value | Per-app |
-| `cli-version` | CLI version to fetch (`latest`, `dev`, or a specific version string) | `latest` | Global / Per-app |
-| `cli-source` | GitHub or GitLab repo for CLI (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` | Global / Per-app |
-| `strict-sigcheck` | Fail the build if an app is missing from `sig.txt` (see note below) | `true` | **Global only** |
-| `app-name` | Display name used in output filename and build label | `table name (hyphens replaced by spaces)` | Per-app |
-| `arch` | Target architecture (`all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`) | `all` | Per-app |
-| `version` | Target version (`auto`, `latest`, or a specific version string) - `latest` also considers experimental patch versions, `auto` only stable ones | `auto` | Per-app |
-| `changelog-keywords` | List of keywords used to detect if this app was updated in the release notes | `[]` | Per-app |
-| `apkmirror-dlurl` | APKMirror page URL | `-` | Per-app |
-| `uptodown-dlurl` | Uptodown page URL | `-` | Per-app |
-| `github-dlurl` | GitHub Releases page URL | `-` | Per-app |
-| `exclusive-patches` | Only apply patches listed in `[AppName.patches]`, exclude everything else | `false` | Per-app |
-| `patcher-args` | Extra arguments passed directly to Morphe CLI | `-` | Per-app |
-| `skip-sigcheck` | Completely bypasses signature checks for this app (see note below) | `false` | **Per-app only** |
-| `enabled` | Set to `false` to skip this entry | `true` | Per-app |
-
-**`[AppName.patches]` table** - defines which patch bundles to use and which patches to apply from each:
-
-| Field | Description | Default |
-|:-----:|:-----------:|:-------:|
-| key | Patch source (`github:owner/repo` or `gitlab:owner/repo`) | - |
-| `version` | Version to fetch (`latest`, `dev`, or a specific tag) | `latest` |
-| `include` | List of patch names to apply from this source. Empty list applies all patches | `[]` |
-| `exclude` | List of patch names to explicitly disable from this source | `[]` |
-
-Each patch source is fetched exactly once and reused across all apps that reference the same `(source, version)` pair.
-
-2. 🔏 **Signature verification flags**:
-
-The build system includes two independent flags for controlling APK signature verification.
-
-* `strict-sigcheck` **(Global root level only | Default: `true`)**  
-Controls the strict requirement for `sig.txt`:
-> - When set to `false`, the build will not fail if an app is missing from `sig.txt` (useful for forks and local testing). If a signature entry does exist, it is still verified normally.
-
-* `skip-sigcheck` **(Per-app [AppName] level only | Default: `false`)**  
-Acts as a total bypass of signature verification for one specific app.
-> - When set to `true`, the build completely ignores `sig.txt` and native APK certificate checks for that app. Use this only for pre-modified APKs (e.g. with PairIP removed) where the original certificate is gone.
-
-
-**How to add a signature entry to `sig.txt`** (only needed when `skip-sigcheck` is `false`):
-
-> * **Method 1 (Quick):** Copy the original SHA-256 fingerprint directly from a trusted source like **APKMirror** (listed on every APK download page).
-> * **Method 2 (Manual):** Use the provided toolchain on the original, unmodified APK: `java -jar apksigner.jar verify --print-certs <app.apk>`
-> 
-> Format for `sig.txt`: `<sha256-fingerprint>  <package.name>`
-
-3. 🤖 **Smart Build**:
-
-When `changelog-keywords` are defined for an application, the CI will only build that app if its keywords are found in the upstream patch release notes.
-
-* `changelog-keywords` **(Per-app level only | Default: `[]`)**  
-A list of keyword strings to search for in the release notes. If not specified, the app will always be built regardless of changelog content.
-
-4. ➕ **Adding a new patch source**:
-
-- Add your app entries to `config.toml` with a `[AppName.patches]` table pointing to your patch repo, and set `release-group` to identify which release this app belongs to (see the configuration table above for all available options).
-- Add a new job to `.github/workflows/ci.yml` so the CI picks up your release group automatically. Copy the block below and replace every occurrence of `<group>` with your release group name in **lowercase** (must match the `release-group` value set in `config.toml`):
-```yaml
-build-<group>:
-  name: build (<group>)
-  needs: check-versions
-  if: contains(fromJson(needs.check-versions.outputs.build_matrix), '<group>')
-  uses: ./.github/workflows/build.yml
-  with:
-    patch_source: '<group>'
-    filter_changelog: ${{ inputs.force_build != true }}
-  secrets: inherit
+```toml
+[SomeMirror]
+app-name = "Some Mirror"
+mirror = true
+version = "latest"
+arch = "arm64-v8a"
+pkg-name = "com.example.mirror"
+direct-dlurl = "https://example.com/downloads"
 ```
 
-5. 🔑 **Keystore**:
+Validate your changes with:
 
-To sign APKs with a custom keystore, create a `.env` file in the project root:
+```bash
+uv run python -c "from src.core.config import load_toml, parse_config, parse_app_entries, CONFIG_PATH; d = load_toml(CONFIG_PATH); parse_app_entries(d, parse_config(d))"
+```
+
+## 🔑 Signing
+
+APKs must be signed to install and update correctly. Create a `.env` file in the project root:
 
 ```env
 KEYSTORE_BASE64=<base64-encoded keystore>
@@ -142,30 +157,62 @@ KEYSTORE_PASS=<keystore password>
 KEYSTORE_ALIAS=<keystore alias>
 ```
 
-To encode an existing keystore:
+Encode an existing keystore with `base64 -w 0 my.keystore`. On GitHub Actions, set the same names as repository secrets.
 
-```bash
-base64 -w 0 my.keystore
+If no keystore is configured, a local `morphe.keystore` is used when present; otherwise the CLI's built-in debug keystore is used — which changes the signature on every CI run and makes app updates **impossible**.
+
+> **Note:** apkforge previously verified downloaded stock APKs against a SHA-256 `sig.txt` list (`strict-sigcheck` / `skip-sigcheck`, `apksigner.jar`). That verification layer and all of its dependencies have been removed; only APK **signing** remains.
+
+## 🗂️ Project layout
+
+```
+main.py                  # CLI entry point
+src/core/
+  builder.py             # orchestration: download → patch → optimize → sign
+  config.py              # TOML parsing and validation
+  network.py             # curl_cffi session, retries and per-domain locks
+  patcher.py             # Morphe CLI wrapper (streaming output)
+  prebuilts.py           # CLI jars and .mpp bundle fetching
+  versions.py            # shared version-parsing helpers
+  logger.py              # coloured / GitHub-annotation logging
+src/scrapers/            # APKMirror, Uptodown, GitHub, Direct + base
+src/scripts/             # CI helpers: matrix, logs, readme, telegram, wa_version
+tests/                   # unittest suite
 ```
 
-On **GitHub Actions**, set `KEYSTORE_BASE64`, `KEYSTORE_PASS` and `KEYSTORE_ALIAS` as repository secrets under **Settings → Secrets and variables → Actions** instead of a `.env` file, as they are passed to the build automatically.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a deeper walkthrough.
 
-If no keystore is configured, `morphe.keystore` is used as a fallback if it exists in the project root. If neither is present, the CLI signs with its built-in debug keystore. On **GitHub Actions** this means every release will have a different signature, making app updates **impossible**.
+## 🧪 Testing & linting
 
-## 🤝 Contributing
+```bash
+uv run python -m unittest discover -s tests -t . -v   # unit tests
+uvx ruff@0.16.7 check .                               # lint
+```
 
-1. 🐞 **Bug reports**:
+Both run in the **Lint, Test & Sync README** workflow on every push and pull request touching `src/`, `tests/`, `config.toml` or `pyproject.toml`.
 
-For bugs in the **build script itself**, use the [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml) template. For bugs in **patched applications**, use the [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml) template.
+## 🔁 CI overview
 
-2. **💡 Suggestions**:
+| Workflow | Trigger | Purpose |
+|:---------|:--------|:--------|
+| `ci.yml` | Daily cron + manual dispatch | Detects updates, then calls the reusable build workflow |
+| `build.yml` | Reusable | Prepares a draft release, builds the matrix, merges artifacts, publishes |
+| `lint.yml` | Push / PR to `src`, `tests`, config, pyproject | Runs ruff + tests and re-syncs the README |
+| `cleanup.yml` | Weekly | Deletes prereleases older than 14 days |
 
-Feature ideas belong in the [Discussions](https://github.com/softpyscho/apkforge/discussions) tab, as this keeps the issue tracker focused on bugs.
+A build only runs when an upstream patch source (or a mirrorable stock version) is newer than the last release, unless `force_build` is used.
 
-3. **🛠️ Pull Requests**:
+## 🤝 Pull requests
 
-Pull requests are welcome. AI-assisted contributions are accepted, but all changes must be manually reviewed before submitting, as you are responsible for every line you put your name on. I reserve the right to reject any contribution that does not align with the project's vision. By submitting a pull request, you agree to license your contribution under the terms of the GNU GPLv3 license.
+- Keep changes focused and describe the motivation.
+- Run `ruff` and the unit tests before opening a PR.
+- AI-assisted contributions are welcome, but review every line you submit — you are responsible for it.
+- By submitting a pull request you agree to license your contribution under the **GNU GPLv3**.
+
+For bugs in the **build script**, use the [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml). For issues with a **built APK**, use the [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml). Feature ideas belong in [Discussions](https://github.com/softpyscho/apkforge/discussions).
 
 ---
 
-<p align="center"><i>Maintained with ❤️ by <a href="https://github.com/softpyscho">softpyscho</a></i></p>
+<div align="center">
+<i>Maintained with ❤️ by <a href="https://github.com/softpyscho">softpyscho</a></i>
+</div>

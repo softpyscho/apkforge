@@ -21,12 +21,8 @@ TEMP_DIR: Path = Path("temp")
 BUILD_DIR: Path = Path("build")
 ORIGINAL_APK_DIR: Path = Path("unmodified-apks")
 CONFIG_PATH: Path = Path("config.toml")
-SOURCES: tuple[str, ...] = ("direct", "github", "apkmirror", "uptodown", "apkpure")
+SOURCES: tuple[str, ...] = ("direct", "github", "apkmirror", "uptodown")
 VALID_ARCHES: frozenset[str] = frozenset({"both", "all", "arm64-v8a", "armeabi-v7a", "x86_64", "x86"})
-
-TEMP_DIR.mkdir(parents=True, exist_ok=True)
-BUILD_DIR.mkdir(parents=True, exist_ok=True)
-ORIGINAL_APK_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass(slots=True, frozen=True)
@@ -35,7 +31,6 @@ class Config:
     cli_version: str
     cli_source: str
     brand: str
-    strict_sigcheck: bool
 
 @dataclass(slots=True, frozen=True)
 class AppEntry:
@@ -54,7 +49,6 @@ class AppEntry:
     exclusive_patches: bool
     cli_source: str
     cli_version: str
-    skip_sigcheck: bool
     enabled: bool
     mirror: bool
     keep_filename: bool
@@ -79,7 +73,6 @@ def parse_config(data: dict[str, object]) -> Config:
         brand=str(data.get("brand", "Morphe")),
         cli_version=str(data.get("cli-version", "latest")),
         cli_source=str(data.get("cli-source", "github:MorpheApp/morphe-desktop")),
-        strict_sigcheck=_parse_bool(data, "strict-sigcheck", True),
     )
 
 def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
@@ -139,7 +132,6 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             exclusive_patches=_parse_bool(t, "exclusive-patches", False),
             cli_source=str(t.get("cli-source", main.cli_source)),
             cli_version=str(t.get("cli-version", main.cli_version)),
-            skip_sigcheck=_parse_bool(t, "skip-sigcheck", False),
             enabled=_parse_bool(t, "enabled", True),
             mirror=_parse_bool(t, "mirror", False),
             keep_filename=_parse_bool(t, "keep-filename", False),

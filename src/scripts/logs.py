@@ -17,12 +17,8 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-from src.core.logger import IS_GITHUB, abort
+from src.core.logger import abort, require_ci
 
-
-def _require_ci(script: str) -> None:
-    if not IS_GITHUB:
-        abort(f"'{script}' is only available in GitHub Actions")
 
 def _parse_log_file(log: Path, collected: list[str]) -> str:
     microg_line = ""
@@ -72,9 +68,11 @@ def combine_logs(logs_dir: Path | str) -> None:
     # Group entries by patch source to compute general patches
     groups = {}
     for entry in entries:
-        if not entry.enabled: continue
+        if not entry.enabled:
+            continue
         for source in entry.patches:
-            if source not in groups: groups[source] = []
+            if source not in groups:
+                groups[source] = []
             if not any(e.table == entry.table for e in groups[source]):
                 groups[source].append(entry)
                 
@@ -119,7 +117,7 @@ def combine_logs(logs_dir: Path | str) -> None:
         # Get patches for this app using readme logic
         entry = next((e for e in entries if e.table == app), None)
         if entry:
-            source = list(entry.patches.keys())[0] if entry.patches else None
+            source = next(iter(entry.patches), None)
             general_patches = source_general_patches.get(source, set())
             details_html = _patches_label(entry, patches_info, general_patches)
         else:
@@ -139,7 +137,7 @@ def combine_logs(logs_dir: Path | str) -> None:
         print("\n\n".join(unique))
 
 def main() -> None:
-    _require_ci("logs.py")
+    require_ci("logs.py")
     match sys.argv[1:]:
         case ["combine-logs", *args]:
             combine_logs(logs_dir=Path(args[0] if args else "logs"))

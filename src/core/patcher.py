@@ -15,19 +15,18 @@ import contextlib
 import os
 import re
 import subprocess
+import threading
 from pathlib import Path
 
 from src.core.logger import pr, wpr
-from src.core.prebuilts import get_highest_ver
+from src.core.versions import clean_version, highest_version
 
 _SECRET_PATTERNS = re.compile(r"(keystore-password=|keystore-entry-password=)\S+")
+_PATCH_TIMEOUT = 900  # 15 minutes
 
 
 class PatcherError(Exception):
     pass
-
-class SignatureError(PatcherError):
-    """Raised when sig.txt has no entry for a package, or apksigner reports a hash mismatch."""
 
 def _run_java(*args: str | Path, capture: bool = True, timeout: int = 600) -> str:
     result = subprocess.run(["java", *(str(a) for a in args)], capture_output=capture, text=True, timeout=timeout)
@@ -37,15 +36,42 @@ def _run_java(*args: str | Path, capture: bool = True, timeout: int = 600) -> st
         raise PatcherError(redacted.strip())
     return combined
 
-def _clean_version_string(ver: str) -> str:
-    # Strip any bracketed [versionCodes: ...] or parenthesized (12345) annotations
-    return re.split(r"[\(\[]", ver)[0].strip()
+def _run_java_streaming(args: list[str | Path], timeout: int = _PATCH_TIMEOUT) -> str:
+    """Run a java command, streaming merged output live while capturing it."""
+    proc = subprocess.Popen([str(a) for a in args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    lines: list[str] = []
+
+    def _pump() -> None:
+        if proc.stdout is None:
+            return
+        for line in proc.stdout:
+            print(line, end="")
+            lines.append(line)
+        proc.stdout.close()
+
+    reader = threading.Thread(target=_pump, daemon=True)
+    reader.start()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        reader.join(timeout=5)
+        captured = _SECRET_PATTERNS.sub(r"\1***", "".join(lines))
+        raise PatcherError(f"Command timed out after {timeout}s:\n{captured.strip()}") from None
+    else:
+        reader.join(timeout=5)
+
+    output = "".join(lines)
+    if proc.returncode != 0:
+        redacted = _SECRET_PATTERNS.sub(r"\1***", output)
+        raise PatcherError(redacted.strip())
+    return output
 
 def _parse_patch_block(output: str, patch_name: str) -> list[str]:
     if m := re.search(rf"Name:\s*{re.escape(patch_name)}\n.*?Compatible versions:\s*\n(.*?)(?:\n\n|\Z)", output, re.DOTALL | re.IGNORECASE):
         vers = []
         for line in m.group(1).splitlines():
-            clean = _clean_version_string(line)
+            clean = clean_version(line)
             if clean:
                 vers.append(clean)
         return vers
@@ -59,8 +85,7 @@ def _parse_versions_output(output: str) -> list[str]:
     block = output.split(marker)[1].split("\n\n")[0]
     versions = []
     for line in block.splitlines():
-        clean_ver = _clean_version_string(line)
-        if clean_ver:
+        if clean_ver := clean_version(line):
             versions.append(clean_ver)
     return versions
 
@@ -68,20 +93,10 @@ def _redact_args(args: list[str | Path]) -> list[str]:
     return [_SECRET_PATTERNS.sub(r"\1***", str(a)) for a in args]
 
 class PatcherCLI:
-    def __init__(self, cli_jar: Path, mpp_map: dict[tuple[str, str], Path], apksigner: Path, ks_path: Path | None = None, sig_file: Path = Path("sig.txt")) -> None:
+    def __init__(self, cli_jar: Path, mpp_map: dict[tuple[str, str], Path], ks_path: Path | None = None) -> None:
         self.cli_jar = cli_jar
         self.mpp_map = mpp_map
-        self.apksigner = apksigner
         self.ks_path = ks_path
-        self._signatures: dict[str, str] = {}
-        if sig_file.exists():
-            for line in sig_file.read_text(encoding="utf-8").splitlines():
-                if parts := line.split():
-                    self._signatures[parts[-1]] = parts[0].lower()
-
-    def has_signature(self, pkg_name: str) -> bool:
-        expected = self._signatures.get(pkg_name)
-        return bool(expected)
 
     def list_patches(self, pkg_name: str, experimental: bool = False) -> str:
         extra = ["-x"] if experimental else []
@@ -101,7 +116,7 @@ class PatcherCLI:
         for p in all_included:
             all_vers.extend(_parse_patch_block(list_patches_output, p))
         if all_vers:
-            return get_highest_ver(all_vers)
+            return highest_version(all_vers)
 
         versions_output = self.list_versions(pkg_name, experimental)
         if "Any" in versions_output:
@@ -109,7 +124,7 @@ class PatcherCLI:
 
         if not (versions := _parse_versions_output(versions_output)):
             raise PatcherError(f"No patches found for '{pkg_name}'")
-        return get_highest_ver(versions)
+        return highest_version(versions)
 
     def resolve_auto_patches(self, list_patches_output: str) -> tuple[str, str]:
         microg_patch = psu_patch = ""
@@ -147,7 +162,7 @@ class PatcherCLI:
         p_args.extend(("--striplibs", "arm64-v8a,armeabi-v7a" if arch == "all" else arch))
         return p_args
 
-    def patch(self, stock_apk: Path, output_apk: Path, patch_args: list[str], run_fn=None) -> None:
+    def patch(self, stock_apk: Path, output_apk: Path, patch_args: list[str]) -> None:
         base_cmd = ["-jar", self.cli_jar, "patch", stock_apk, "-o", output_apk]
         ks_args: list[str] = []
         if self.ks_path and (ks_pass := os.getenv("KEYSTORE_PASS")) and (ks_alias := os.getenv("KEYSTORE_ALIAS")):
@@ -157,24 +172,7 @@ class PatcherCLI:
 
         pr(" ".join(_redact_args(["java", *base_cmd, *ks_args, *patch_args])))
         try:
-            if run_fn:
-                run_fn(["java", *base_cmd, *ks_args, *patch_args])
-            else:
-                _run_java(*base_cmd, *ks_args, *patch_args, capture=False)
-        except subprocess.TimeoutExpired:
-            output_apk.unlink(missing_ok=True)
-            raise PatcherError(f"Patching '{stock_apk.name}' failed, process timed out after 10 minutes") from None
-        except Exception as exc:
-            output_apk.unlink(missing_ok=True)
-            raise PatcherError(f"Patching '{stock_apk.name}' failed:\n{exc}") from exc
-
-    def check_signature(self, apk: Path, pkg_name: str) -> bool:
-        expected = self._signatures.get(pkg_name)
-        if not expected:
-            return True
-
-        try:
-            output = _run_java("--enable-native-access=ALL-UNNAMED", "-jar", self.apksigner, "verify", "--print-certs", apk)
-            return expected.lower() in output.lower()
+            _run_java_streaming(["java", *base_cmd, *ks_args, *patch_args])
         except PatcherError:
-            return False
+            output_apk.unlink(missing_ok=True)
+            raise

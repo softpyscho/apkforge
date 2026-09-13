@@ -1,5 +1,4 @@
 parallel-jobs = 1
-strict-sigcheck = false
 brand = "morphe"
 
 [Reddit]
@@ -10,7 +9,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/redditinc/reddit"
 uptodown-dlurl = "https://reddit-official-app.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/reddit/com.reddit.frontpage"
 patcher-args = "-e 'Custom branding name for Reddit' -OappName='Reddit'"
 
 [Reddit.patches]
@@ -24,7 +22,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/x-corp/twitter"
 uptodown-dlurl = "https://twitter.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/x/com.twitter.android"
 
 [Twitter.patches]
 "github:crimera/piko" = []
@@ -38,7 +35,6 @@ version = "latest"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/instagram/instagram-instagram"
 uptodown-dlurl = "https://instagram.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/instagram/com.instagram.android"
 github-dlurl = "https://github.com/softpyscho/apkforge/releases/tag/com.instagram.android"
 
 [Instagram.patches]
@@ -52,7 +48,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/cloudflare/1-1-1-1-faster-safer-internet"
 uptodown-dlurl = "https://1-1-1-1.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/1-1-1-1-warp/com.cloudflare.onedotonedotonedotone"
 
 [WARP.patches]
 "github:rushiranpise/morphe-patches" = []
@@ -65,7 +60,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/splitwise/splitwise/"
 uptodown-dlurl = "https://splitwise.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/splitwise/com.Splitwise.SplitwiseMobile"
 
 [Splitwise.patches]
 "github:rushiranpise/morphe-patches" = []
@@ -78,7 +72,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/true-software-scandinavia-ab/truecaller-caller-id-block/"
 uptodown-dlurl = "https://truecaller.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/truecaller/com.truecaller"
 
 [Truecaller.patches]
 "gitlab:Paresh-Maheshwari/paresh-patches" = []
@@ -91,7 +84,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/apryse-software-inc/xodo-pdf-reader-editor"
 uptodown-dlurl = "https://xodo-docs.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/xodo-pdf-reader/com.xodo.pdf.reader"
 
 [Xodo.patches]
 "github:hoo-dles/morphe-patches" = []
@@ -104,7 +96,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/amazon-mobile-llc/amazon-prime-video/"
 uptodown-dlurl = "https://amazon-video.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/amazon-prime-video/com.amazon.avod.thirdpartyclient"
 
 [Amazon-Prime-Video.patches]
 "github:hoo-dles/morphe-patches" = []
@@ -117,7 +108,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/ticktick-limited/ticktick-to-do-list-with-reminder-day-planner/"
 uptodown-dlurl = "https://ticktick.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/ticktick/com.ticktick.task"
 
 [TickTick.patches]
 "gitlab:Paresh-Maheshwari/paresh-patches" = []
@@ -130,7 +120,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/oasisfeng/greenify"
 uptodown-dlurl = "https://greenify.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/greenify/com.oasisfeng.greenify"
 github-dlurl = "https://github.com/softpyscho/apkforge/releases/tag/com.oasisfeng.greenify"
 
 [Greenify.patches]
@@ -144,7 +133,6 @@ version = "latest"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/paget96/battery-guru-health-saver/"
 uptodown-dlurl = "https://battery-guru.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/battery-guru-battery-health/com.paget96.batteryguru"
 
 [Battery-Guru.patches]
 "github:arandomhooman/hoomans-morphe-patches" = { version = "dev" }
@@ -157,7 +145,6 @@ version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/sleep-tracker-alarm-clock-by-delightroom/alarmy-challenge-alarm-clock/"
 uptodown-dlurl = "https://alarmy.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/alarmy-alarm-clock-sleep/droom.sleepIfUCan"
 
 [Alarmy.patches]
 "github:rabilrbl/fluffy-patches" = []
@@ -167,10 +154,9 @@ app-name = "Bitget"
 mirror = true
 version = "latest"
 arch = "arm64-v8a"
-pkg-name = "com.bitget.exchange"          # ← added
+pkg-name = "com.bitget.exchange"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/bg-limited/bitget-buy-sell-crypto/"
 uptodown-dlurl = "https://bitget.en.uptodown.com/android"
-apkpure-dlurl   = "https://apkpure.com/bitget/com.bitget.exchange"
 
 [Stremio]
 app-name = "Stremio"
@@ -181,7 +167,6 @@ pkg-name = "com.stremio.one"
 direct-dlurl = "https://www.stremio.com/downloads"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/stremio/stremio-2/"
 uptodown-dlurl = "https://stremio-one.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/stremio-app/com.stremio.one"
 
 [Mixplorer]
 app-name = "Mixplorer"
@@ -191,7 +176,6 @@ arch = "arm64-v8a"
 pkg-name = "com.mixplorer"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/hootan-parsa/mixplorer-hootanparsa/"
 uptodown-dlurl = "https://mixplorer.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/mixplorer/com.mixplorer"
 
 [Mix-Archive]
 app-name = "Mix Archive"
@@ -201,7 +185,6 @@ arch = "arm64-v8a"
 pkg-name = "com.mixplorer.addon.archive"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/hootan-parsa/mix-archive/"
 uptodown-dlurl = "https://mix-archive.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/mix-archive/com.mixplorer.addon.archive"
 
 [RedotPay]
 app-name = "RedotPay"
@@ -211,7 +194,6 @@ arch = "arm64-v8a"
 pkg-name = "com.redotpay"
 direct-dlurl = "https://www.redotpay.com/app-download"
 uptodown-dlurl = "https://redotpay.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/redotpay-wallet-buy-btc/com.redotpay"
 
 [Duck-Detector]
 app-name = "Duck Detector"
@@ -231,7 +213,6 @@ pkg-name = "com.whatsapp"
 direct-dlurl = "https://www.whatsapp.com/android/"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
 uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/whatsapp-messenger/com.whatsapp"
 
 [WhatsApp-Business]
 app-name = "WhatsApp Business"
@@ -241,4 +222,3 @@ arch = "arm64-v8a"
 pkg-name = "com.whatsapp.w4b"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/"
 uptodown-dlurl = "https://whatsapp-business.en.uptodown.com/android"
-apkpure-dlurl = "https://apkpure.com/whatsapp-business/com.whatsapp.w4b"
