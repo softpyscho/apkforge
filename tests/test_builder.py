@@ -65,6 +65,21 @@ class MatchesWildcardTests(unittest.TestCase):
             self.assertTrue(builder._matches_wildcard(Path("x.apk"), "2.26.30.xx"))
 
 
+class VerifyWildcardTests(unittest.TestCase):
+    def test_matching_minor_is_verified(self) -> None:
+        self.assertTrue(builder._should_verify_wildcard("2.26.35.xx", "2.26.35.71"))
+
+    def test_resolved_latest_is_not_rejected(self) -> None:
+        self.assertFalse(builder._should_verify_wildcard("2.26.35.xx", "latest"))
+
+    def test_newer_minor_is_not_rejected(self) -> None:
+        self.assertFalse(builder._should_verify_wildcard("2.26.35.xx", "2.26.42.83"))
+
+    def test_non_wildcard_config_is_never_verified(self) -> None:
+        self.assertFalse(builder._should_verify_wildcard("2.26.35.0", "2.26.35.74"))
+        self.assertFalse(builder._should_verify_wildcard("latest", "latest"))
+
+
 class OptimizeBundleTests(unittest.TestCase):
     def test_keeps_target_abi_and_english_xxhdpi(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

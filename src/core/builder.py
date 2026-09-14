@@ -307,6 +307,19 @@ def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
             old_file.unlink(missing_ok=True)
 
 
+def _should_verify_wildcard(config_version: str, resolved_version: str) -> bool:
+    """Return True only when the resolved version still falls inside the config wildcard.
+
+    A mirror pinned to e.g. ``2.26.35.xx`` accepts any ``2.26.35.x`` download. When the
+    source no longer carries that minor and the resolver falls back to the latest
+    available (a newer minor), re-rejecting the artifact would make the build fail
+    forever, so the wildcard is only enforced while the resolved version matches it.
+    """
+    if not config_version.endswith(".xx"):
+        return False
+    return resolved_version.startswith(config_version[:-3] + ".")
+
+
 def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str], verify_wildcard: bool = False) -> DownloadResult:
     arch_f = arch.replace(" ", "")
     version_clean = clean_version(version)
@@ -485,8 +498,10 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             _patches_info[entry.table] = _parse_patch_names(list_patches)
         version, force = _resolve_version(entry, patcher, list_patches, pkg_name, dl_from, scrapers)
 
+        verify_wildcard = _should_verify_wildcard(entry.version, version)
+
         try:
-            dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources, verify_wildcard=True)
+            dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources, verify_wildcard=verify_wildcard)
         except BuilderError as exc:
             cached_candidates = []
             if pkg_name:
