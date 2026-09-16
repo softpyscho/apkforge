@@ -29,6 +29,13 @@
       "source": "github"
     },
     {
+      "app": "WhatsApp",
+      "label": "WhatsApp (arm64-v8a)",
+      "version": "2.26.36.73",
+      "apk": "whatsapp-mirror-v2.26.36.73-arm64-v8a.apk",
+      "source": "direct"
+    },
+    {
       "app": "Splitwise",
       "label": "Splitwise (arm64-v8a)",
       "version": "26.7.3",
