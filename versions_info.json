@@ -31,8 +31,8 @@
     {
       "app": "WhatsApp",
       "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.36.73",
-      "apk": "whatsapp-mirror-v2.26.36.73-arm64-v8a.apk",
+      "version": "2.26.37.70",
+      "apk": "whatsapp-mirror-v2.26.37.70-arm64-v8a.apk",
       "source": "direct"
     },
     {
@@ -131,7 +131,7 @@
       "label": "Bitget (arm64-v8a)",
       "version": "2.90.1",
       "apk": "bitget-mirror-v2.90.1-arm64-v8a.apkm",
-      "source": "uptodown"
+      "source": "apkmirror"
     }
   ],
   "excluded_patches": {
