@@ -1,0 +1,98 @@
+# ==============================================================================
+# 1. SECRETS, CREDENTIALS & SIGNING KEYS (High Priority)
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+morphe.keystore
+keystore/
+*credentials*
+*secret*
+
+# ==============================================================================
+# 2. PYTHON RUNTIME & DEPENDENCIES
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+node_modules/
+vendor/
+jspm_packages/
+
+# ==============================================================================
+# 3. TESTING, COVERAGE & LINTER CACHES
+# ==============================================================================
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+*.lcov
+.turbo/
+
+# ==============================================================================
+# 4. APKFORGE BUILD OUTPUTS & ANDROID ARTIFACTS
+# ==============================================================================
+build/
+dist/
+out/
+temp/
+tmp/
+unmodified-apks/
+build.md
+build.json
+*.apk
+*.aab
+*.apks
+*.xapk
+
+# Web/Frontend assets (if present)
+.next/
+.nuxt/
+*.tsbuildinfo
+*.map
+*.min.js
+*.min.css
+
+# ==============================================================================
+# 5. LOGS, LOCAL RUNTIME & DATABASES
+# ==============================================================================
+logs/
+*.log
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+
+# ==============================================================================
+# 6. IDES, EDITORS & AI AGENTS
+# ==============================================================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.opencode/
+*.swp
+*.swo
+*~
+
+# ==============================================================================
+# 7. OPERATING SYSTEM ARTIFACTS
+# ==============================================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
