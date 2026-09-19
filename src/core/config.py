@@ -68,8 +68,12 @@ def _parse_bool(d: dict[str, object], key: str, default: bool) -> bool:
 def parse_config(data: dict[str, object]) -> Config:
     cpu_cnt = getattr(os, "process_cpu_count", os.cpu_count)() or 1
     default_jobs = min(cpu_cnt, 2) if os.getenv("GITHUB_ACTIONS") else cpu_cnt
+    try:
+        parallel_jobs = int(data.get("parallel-jobs", default_jobs))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"'parallel-jobs' must be an integer, got {data.get('parallel-jobs')!r}") from exc
     return Config(
-        parallel_jobs=int(data.get("parallel-jobs", default_jobs)),
+        parallel_jobs=parallel_jobs,
         brand=str(data.get("brand", "Morphe")),
         cli_version=str(data.get("cli-version", "latest")),
         cli_source=str(data.get("cli-source", "github:MorpheApp/morphe-desktop")),

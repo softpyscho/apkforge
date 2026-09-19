@@ -17,7 +17,9 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
 from src.core.logger import abort, require_ci
+from src.scripts.readme import _patches_label
 
 
 def _parse_log_file(log: Path, collected: list[str]) -> str:
@@ -57,10 +59,7 @@ def combine_logs(logs_dir: Path | str) -> None:
     print("## 🚀 Built Applications\n")
     print("| App | Version | Architecture | Download & Patches |")
     print("|:---|:-------:|:------------:|:---------|")
-    
-    from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
-    from src.scripts.readme import _patches_label
-    
+
     data = load_toml(CONFIG_PATH)
     config = parse_config(data)
     entries = parse_app_entries(data, config)

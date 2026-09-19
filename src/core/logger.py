@@ -11,12 +11,23 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
+import contextlib
 import os
 import sys
 from typing import Never
 
 IS_GITHUB = os.getenv("GITHUB_ACTIONS") == "true"
 INTERRUPTED = False
+
+
+def force_utf8_stdio() -> None:
+    """Keep emoji/Unicode output from crashing on Windows cp1252 consoles."""
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+force_utf8_stdio()
 
 
 def is_interrupted() -> bool:

@@ -51,6 +51,70 @@ class SanitizeTests(unittest.TestCase):
         self.assertEqual(builder._sanitize_asset_name("app name (v1).apk"), "app.name.v1.apk")
 
 
+class CachedVersionsTests(unittest.TestCase):
+    def test_collects_versions_from_cached_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            (cache / "com.example-v1.2.3-arm64-v8a.apk").write_bytes(b"x")
+            (cache / "com.example-v2.0.0-arm64-v8a.apkm").write_bytes(b"x")
+            (cache / "com.example-v1.2.3-arm64-v8a.src").write_text("direct", encoding="utf-8")
+            (cache / "other-v9.9.9-arm64-v8a.apk").write_bytes(b"x")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                versions = builder._cached_apk_versions("com.example")
+        self.assertEqual(sorted(versions), ["1.2.3", "2.0.0"])
+
+    def test_missing_dir_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp) / "missing"):
+            self.assertEqual(builder._cached_apk_versions("com.example"), [])
+
+    def test_empty_pkg_name_returns_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            self.assertEqual(builder._cached_apk_versions(""), [])
+
+
+class PatchWithRetriesTests(unittest.TestCase):
+    def test_returns_output_on_success(self) -> None:
+        out = Path("out.apk")
+        with mock.patch.object(builder, "_apply_patch", return_value=out):
+            apk, excluded, exc = builder._patch_with_retries("entry", "arch", "1.0", False, "patcher", "", "dl")  # type: ignore[arg-type]
+        self.assertEqual(apk, out)
+        self.assertEqual(excluded, [])
+        self.assertIsNone(exc)
+
+    def test_excludes_failing_patch_and_retries(self) -> None:
+        calls: list[list[str]] = []
+
+        def _apply(entry, arch, version, force, patcher, list_patches, dl_result, excluded):
+            calls.append(list(excluded))
+            if not excluded:
+                raise builder.BuilderError("FAILED: Bad Patch\nstack")
+            return Path("out.apk")
+
+        with mock.patch.object(builder, "_apply_patch", side_effect=_apply):
+            apk, excluded, exc = builder._patch_with_retries("entry", "arch", "1.0", False, "patcher", "", "dl")  # type: ignore[arg-type]
+        self.assertEqual(apk, Path("out.apk"))
+        self.assertEqual(excluded, ["Bad Patch"])
+        self.assertEqual(calls, [[], ["Bad Patch"]])
+        self.assertIsNone(exc)
+
+    def test_repeated_failure_of_same_patch_stops(self) -> None:
+        def _apply(entry, arch, version, force, patcher, list_patches, dl_result, excluded):
+            raise builder.BuilderError("FAILED: Bad Patch\nstack")
+
+        with mock.patch.object(builder, "_apply_patch", side_effect=_apply):
+            apk, excluded, exc = builder._patch_with_retries("entry", "arch", "1.0", False, "patcher", "", "dl")  # type: ignore[arg-type]
+        self.assertIsNone(apk)
+        self.assertEqual(excluded, ["Bad Patch"])
+        self.assertIn("failed again after being excluded", str(exc))
+
+    def test_non_patch_failure_stops_immediately(self) -> None:
+        with mock.patch.object(builder, "_apply_patch", side_effect=builder.PatcherError("boom")):
+            apk, excluded, exc = builder._patch_with_retries("entry", "arch", "1.0", False, "patcher", "", "dl")  # type: ignore[arg-type]
+        self.assertIsNone(apk)
+        self.assertEqual(excluded, [])
+        self.assertIn("boom", str(exc))
+
+
 class MatchesWildcardTests(unittest.TestCase):
     def test_matching_manifest_version(self) -> None:
         with (

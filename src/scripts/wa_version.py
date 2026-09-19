@@ -24,7 +24,7 @@ CONFIG_PATH = Path("config.toml")
 def fetch_recommended_wa_versions() -> tuple[str, str]:
     """Fetch the highest recommended WhatsApp and WhatsApp Business versions from WaEnhancer repo."""
     req = urllib.request.Request(WAENHANCER_ARRAYS_URL, headers={"User-Agent": "Mozilla/5.0"})
-    xml_data = urllib.request.urlopen(req).read().decode("utf-8")
+    xml_data = urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
     root = ET.fromstring(xml_data)
 
     def _get_highest_ver(array_name: str) -> str:

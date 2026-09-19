@@ -31,6 +31,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
+from src.core.logger import force_utf8_stdio
 
 
 def _source_url(source: str) -> str:
@@ -472,7 +473,7 @@ def generate_apps_section() -> str:
         lines.append("")
 
     # Remove trailing separator
-    if lines and lines[-2] == "---":
+    if len(lines) >= 2 and lines[-2] == "---":
         lines.pop(-1)
         lines.pop(-1)
 
@@ -503,7 +504,7 @@ def update_readme() -> bool:
         re.escape(start_marker) + r".*?" + re.escape(end_marker),
         re.DOTALL
     )
-    new_content = pattern.sub(new_block, content)
+    new_content = pattern.sub(lambda _: new_block, content)
 
     update_obtainium_export()
 
@@ -527,6 +528,7 @@ def update_obtainium_export() -> bool:
 
 
 def main() -> None:
+    force_utf8_stdio()
     match sys.argv[1:]:
         case ["generate"]:
             print(generate_apps_section())

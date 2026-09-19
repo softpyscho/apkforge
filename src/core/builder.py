@@ -178,6 +178,19 @@ def _sanitize_cached_apks() -> None:
                     wpr(f"Could not rename cached file '{cached_file.name}': {exc}")
 
 
+def _cached_apk_versions(pkg_name: str) -> list[str]:
+    """Cleaned versions of the stock APKs cached in ORIGINAL_APK_DIR for pkg_name."""
+    versions: list[str] = []
+    if not pkg_name or not ORIGINAL_APK_DIR.exists():
+        return versions
+    for cached_file in ORIGINAL_APK_DIR.iterdir():
+        if not (cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk"))):
+            continue
+        if m := re.search(r"-v([^-]+)-", cached_file.name):
+            versions.append(clean_version(m.group(1)))
+    return versions
+
+
 def _get_versions_below(versions: list[str], target_ver: str) -> list[str]:
     """Return versions strictly below target_ver, sorted from highest to lowest."""
     target_key = parse_version(target_ver)
@@ -214,7 +227,7 @@ def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[s
     for src, url in entry.dl_urls.items():
         try:
             metadata = scrapers[src].cached_metadata(url)
-            pkg_name = getattr(entry, "pkg_name", None) or metadata.pkg_name
+            pkg_name = entry.pkg_name or metadata.pkg_name
 
             pr(f"Package name of '{entry.table}' is '{pkg_name}'")
             return pkg_name, src, failed
@@ -265,26 +278,14 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 version = highest_version(any_candidates)
 
         if not version:
-            cached_vers = []
-            for cached_file in (ORIGINAL_APK_DIR.iterdir() if ORIGINAL_APK_DIR.exists() else ()):
-                if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
-                    m_ver = re.search(r"-v([^-]+)-", cached_file.name)
-                    if m_ver:
-                        c_ver = clean_version(m_ver.group(1))
-                        if not is_wildcard or c_ver.startswith(f"{prefix}."):
-                            cached_vers.append(c_ver)
-            if cached_vers:
-                version = highest_version(cached_vers)
+            cached_vers = _cached_apk_versions(pkg_name)
+            matching = [v for v in cached_vers if v.startswith(f"{prefix}.")] if is_wildcard else cached_vers
+            if matching:
+                version = highest_version(matching)
                 pr(f"Found cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
-            elif pkg_name:
-                for cached_file in (ORIGINAL_APK_DIR.iterdir() if ORIGINAL_APK_DIR.exists() else ()):
-                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
-                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
-                        if m_ver:
-                            cached_vers.append(clean_version(m_ver.group(1)))
-                if cached_vers:
-                    version = highest_version(cached_vers)
-                    pr(f"Found fallback cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
+            elif is_wildcard and cached_vers:
+                version = highest_version(cached_vers)
+                pr(f"Found fallback cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
 
         if not version:
             version = f"{prefix}.0" if is_wildcard else "latest"
@@ -333,31 +334,21 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
             return src_meta.read_text(encoding="utf-8").strip()
         return dl_from
 
-    if stock_apk.exists():
-        pr(f"Reusing existing cached APK: {stock_apk.name}")
+    for cached, cached_is_bundle in ((stock_apk, False), (stock_apk.with_suffix(".apkm"), True)):
+        if not cached.exists():
+            continue
+        pr(f"Reusing existing cached APK: {cached.name}")
         orig_name = ""
-        orig_meta = stock_apk.with_suffix(".orig")
+        orig_meta = cached.with_suffix(".orig")
         if orig_meta.exists():
             orig_name = orig_meta.read_text(encoding="utf-8").strip()
-        return DownloadResult(path=stock_apk, is_bundle=False, original_name=orig_name, source_used=_read_src(stock_apk))
+        return DownloadResult(path=cached, is_bundle=cached_is_bundle, original_name=orig_name, source_used=_read_src(cached))
 
-    stock_apkm = stock_apk.with_suffix(".apkm")
-    if stock_apkm.exists():
-        pr(f"Reusing existing cached APK: {stock_apkm.name}")
-        orig_name = ""
-        orig_meta = stock_apkm.with_suffix(".orig")
-        if orig_meta.exists():
-            orig_name = orig_meta.read_text(encoding="utf-8").strip()
-        return DownloadResult(path=stock_apkm, is_bundle=True, original_name=orig_name, source_used=_read_src(stock_apkm))
-
-    ordered_sources = [s for s in entry.dl_urls if s not in failed_sources]
-    if dl_from in ordered_sources:
-        ordered_sources.remove(dl_from)
+    ordered_sources = [s for s in entry.dl_urls if s not in failed_sources and s != dl_from]
+    if dl_from not in failed_sources:
         ordered_sources.insert(0, dl_from)
     if not ordered_sources:
         ordered_sources = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
-        seen = set()
-        ordered_sources = [s for s in ordered_sources if not (s in seen or seen.add(s))]
 
     for src in ordered_sources:
         url = entry.dl_urls[src]
@@ -488,6 +479,33 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
         shutil.rmtree(work_dir, ignore_errors=True)
 
 
+def _patch_with_retries(entry: AppEntry, arch: str, version: str, force: bool, patcher: PatcherCLI, list_patches: str, dl_result: DownloadResult) -> tuple[Path | None, list[str], Exception | None]:
+    """Run the patcher, auto-excluding patches that fail (max 5 retries).
+
+    Returns the built APK path (None on failure), the excluded patch names and the
+    last error encountered.
+    """
+    excluded_patches: list[str] = []
+    max_retries = 5
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            return _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches), excluded_patches, None
+        except (PatcherError, BuilderError) as exc:
+            last_exc = exc
+            clean_exc = re.sub(r"\x1b\[[0-9;]*m", "", str(exc))
+            match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
+            if not match:
+                break
+            failed_patch = match.group(1).strip()
+            if failed_patch in excluded_patches:
+                last_exc = BuilderError(f"Patch '{failed_patch}' failed again after being excluded.")
+                break
+            wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
+            excluded_patches.append(failed_patch)
+    return None, excluded_patches, last_exc
+
+
 def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, patcher: PatcherCLI | None) -> dict | None:
     try:
         scrapers = {src: make_scraper(src, net) for src in entry.dl_urls}
@@ -503,13 +521,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         try:
             dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources, verify_wildcard=verify_wildcard)
         except BuilderError as exc:
-            cached_candidates = []
-            if pkg_name:
-                for cached_file in (ORIGINAL_APK_DIR.iterdir() if ORIGINAL_APK_DIR.exists() else ()):
-                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
-                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
-                        if m_ver:
-                            cached_candidates.append(clean_version(m_ver.group(1)))
+            cached_candidates = _cached_apk_versions(pkg_name)
 
             if cached_candidates:
                 fallback_ver = highest_version(cached_candidates)
@@ -599,8 +611,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             apk_output = BUILD_DIR / apk_name
             shutil.copy(dl_result.path, apk_output)
             _cleanup_outdated_apks(pkg_name, keep_version=version, arch=arch)
-            excluded_patches = []
-            
+
             pr(f"Mirrored {label}: '{apk_output}'")
             github_asset_name = apk_output.name
             ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
@@ -608,45 +619,13 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": [], "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
 
         # Dynamic Exclude Loop (Max 5 retries to prevent endless loops)
-        excluded_patches = []
-        max_retries = 5
-        apk_output = None
-        patch_success = False
-        last_patch_exc = None
-        
-        for attempt in range(max_retries):
-            try:
-                apk_output = _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches)
-                patch_success = True
-                break
-            except (PatcherError, BuilderError) as exc:
-                last_patch_exc = exc
-                clean_exc = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
-                match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
-                
-                if match:
-                    failed_patch = match.group(1).strip()
-                    if failed_patch in excluded_patches:
-                        last_patch_exc = BuilderError(f"Patch '{failed_patch}' failed again after being excluded.")
-                        break
-                        
-                    wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
-                    excluded_patches.append(failed_patch)
-                else:
-                    break
+        apk_output, excluded_patches, last_patch_exc = _patch_with_retries(entry, arch, version, force, patcher, list_patches, dl_result)
+        patch_success = apk_output is not None
 
         if not patch_success:
             # Fallback to old cached stock APK or lower online version when patching a new version fails
             version_f = version.replace(" ", "").lstrip("v")
-            other_cached = []
-            if pkg_name:
-                for cached_file in (ORIGINAL_APK_DIR.iterdir() if ORIGINAL_APK_DIR.exists() else ()):
-                    if cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk")):
-                        m_ver = re.search(r"-v([^-]+)-", cached_file.name)
-                        if m_ver:
-                            c_ver = m_ver.group(1)
-                            if c_ver != version_f:
-                                other_cached.append(c_ver)
+            other_cached = [v for v in _cached_apk_versions(pkg_name) if v != version_f]
 
             fallback_ver = None
             if other_cached:
@@ -671,28 +650,12 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 try:
                     dl_result_fallback = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
                     dl_result_fallback = _maybe_optimize_bundle(dl_result_fallback, arch)
-                    
+
                     version = fallback_ver
                     force = True
                     dl_result = dl_result_fallback
-                    excluded_patches = []
-                    
-                    for attempt in range(max_retries):
-                        try:
-                            apk_output = _apply_patch(entry, arch, version, force, patcher, list_patches, dl_result, excluded_patches)
-                            patch_success = True
-                            break
-                        except (PatcherError, BuilderError) as exc:
-                            clean_exc = re.sub(r'\x1b\[[0-9;]*m', '', str(exc))
-                            match = re.search(r"FAILED:\s*([^\r\n]+)", clean_exc)
-                            if match:
-                                failed_patch = match.group(1).strip()
-                                if failed_patch in excluded_patches:
-                                    break
-                                wpr(f"Patch '{failed_patch}' failed. Excluding and retrying ({attempt + 1}/{max_retries})...")
-                                excluded_patches.append(failed_patch)
-                            else:
-                                break
+                    apk_output, excluded_patches, last_patch_exc = _patch_with_retries(entry, arch, version, force, patcher, list_patches, dl_result)
+                    patch_success = apk_output is not None
                 except Exception as fb_exc:
                     epr(f"Fallback attempt on version '{fallback_ver}' failed: {fb_exc}")
 
@@ -792,7 +755,12 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
     log_lines: list[str] = []
     report_data = {"success": [], "failed": [], "excluded_patches": {}}
     for fut in as_completed(futures):
-        if r := fut.result():
+        try:
+            r = fut.result()
+        except Exception as exc:
+            epr(f"Unexpected worker crash: {exc}")
+            continue
+        if r:
             if r["success"]:
                 log_lines.append(r["log"])
                 report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"], "source": r["source"]})
