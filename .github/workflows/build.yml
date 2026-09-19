@@ -31,7 +31,6 @@ jobs:
         with:
           python-version: "3.13"
           enable-cache: true
-          quiet: true
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -87,7 +86,6 @@ jobs:
         with:
           python-version: "3.13"
           enable-cache: true
-          quiet: true
 
       - name: Install dependencies
         run: uv sync --frozen
@@ -231,10 +229,19 @@ jobs:
         with:
           python-version: "3.13"
           enable-cache: true
-          quiet: true
 
       - name: Install dependencies
         run: uv sync --frozen
+
+      - name: Commit config version bumps
+        if: always()
+        run: |
+          uv run python -m src.scripts.wa_version || echo "wa_version fetch failed, skipping config commit"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add config.toml
+          git diff --cached --quiet || git commit -m "config: track recommended WhatsApp versions [skip ci]"
+          git push || true
 
       - name: Check if any APKs were uploaded
         id: check
