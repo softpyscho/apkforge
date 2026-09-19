@@ -96,3 +96,15 @@ data/
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# ==============================================================================
+# 8. LARGE, GENERATED OR LOW-SIGNAL CONTEXT (keeps agent token usage low)
+# ==============================================================================
+README.md
+LICENSE
+uv.lock
+obtainium.json
+versions_info.json
+patches_info.json
+icons/
+.aider.*
