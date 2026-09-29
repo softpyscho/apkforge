@@ -197,6 +197,7 @@ class NetworkManager:
         self._dest_mu = threading.Lock()
         self._primed: set[str] = set()
         self._primed_mu = threading.Lock()
+        self._rotations_made = 0
         if self._proxies:
             epr("Using proxy from environment for all requests")
 
@@ -213,6 +214,7 @@ class NetworkManager:
             return False
         with self._rw.write():
             self._imp_index = (self._imp_index + 1) % len(self._impersonations)
+            self._rotations_made += 1
             old = self.session
             self.session = self._build_session()
         with contextlib.suppress(Exception):
@@ -347,11 +349,24 @@ class NetworkManager:
                 return solved
         return None
 
+    def _max_mitigations(self) -> int:
+        """How many challenge mitigations a single request may spend.
+
+        A mitigation changes the request (fresh cookies, a different TLS fingerprint),
+        so it must not consume the HTTP retry budget: with `_MAX_ATTEMPTS` of 4 the
+        warm-up plus rotations could never work through every impersonation, and a
+        source that only answers one of them was reported unreachable.
+        """
+        return len(self._impersonations) + 1
+
     def get(self, url: str, headers: dict[str, str] | None = None) -> str:
         netloc = urlparse(url).netloc
         last_exc: Exception | None = None
         req_headers = self._browser_headers(url, headers, download=False)
-        for attempt in range(1, _MAX_ATTEMPTS + 1):
+        attempt = 0
+        mitigations = 0
+        while attempt < _MAX_ATTEMPTS:
+            attempt += 1
             try:
                 with _get_lock(self._domain_locks, self._domain_mu, netloc):
                     time.sleep(0.5)
@@ -369,7 +384,14 @@ class NetworkManager:
                     if solved_html:
                         return solved_html
                     if solved_html == "":
-                        _retry_sleep(attempt)
+                        mitigations += 1
+                        if mitigations > self._max_mitigations():
+                            epr(f"Exhausted every bot-challenge mitigation for {url}")
+                            break
+                        # The mitigation, not the server, is what changed: retry without
+                        # spending an attempt so the rotation can work through its list.
+                        attempt -= 1
+                        _retry_sleep(mitigations)
                         continue
                     epr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
                     break
@@ -399,7 +421,10 @@ class NetworkManager:
             netloc = urlparse(url).netloc
             last_exc: Exception | None = None
             req_headers = self._browser_headers(url, headers, download=True)
-            for attempt in range(1, _MAX_ATTEMPTS + 1):
+            attempt = 0
+            mitigations = 0
+            while attempt < _MAX_ATTEMPTS:
+                attempt += 1
                 try:
                     challenge = False
                     managed = False
@@ -437,7 +462,12 @@ class NetworkManager:
                         if solved is None:
                             epr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
                             break
-                        _retry_sleep(attempt)
+                        mitigations += 1
+                        if mitigations > self._max_mitigations():
+                            epr(f"Exhausted every bot-challenge mitigation for {url}")
+                            break
+                        attempt -= 1
+                        _retry_sleep(mitigations)
                         continue
 
                     _retry_sleep(attempt, retry_after)

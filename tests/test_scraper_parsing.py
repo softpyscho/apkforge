@@ -10,7 +10,7 @@
 import json
 import unittest
 
-from src.scrapers.apkmirror import APKMirrorScraper
+from src.scrapers.apkmirror import APKMirrorError, APKMirrorScraper
 from src.scrapers.base import _parse_html
 from src.scrapers.direct import DirectScraper, DirectScraperError
 from src.scrapers.github import GitHubScraper
@@ -54,6 +54,59 @@ class APKMirrorVariantTests(unittest.TestCase):
 
     def test_category_is_derived_from_the_url(self) -> None:
         self.assertEqual(APKMirrorScraper._category_of("https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"), "whatsapp")
+
+
+class APKMirrorUnspecificVersionTests(unittest.TestCase):
+    """Searching APKMirror for the literal "latest" can never match a release."""
+
+    def _scraper(self, release_urls: dict[str, str]):
+        scraper = object.__new__(APKMirrorScraper)
+        scraper._cache = {}
+        scraper._category = "whatsapp-business"
+        scraper._release_urls = dict(release_urls)
+        scraper.requested = []
+
+        def _get(url, headers=None):
+            scraper.requested.append(url)
+            if "-release/" in url:
+                return '<a class="btn" href="/dl/step">dl</a>'
+            if "/download/" in url or "type=apk" in url:
+                return '<span><a rel="nofollow" href="/final.apk">x</a></span>'
+            return '<span><a rel="nofollow" href="/final.apk">x</a></span>'
+
+        scraper.net = type("N", (), {
+            "get": staticmethod(_get),
+            "download": staticmethod(lambda url, dest, headers=None: dest.write_bytes(b"PK\x03\x04")),
+        })()
+        return scraper
+
+    def test_unspecific_version_uses_the_newest_release(self) -> None:
+        import tempfile
+        from pathlib import Path
+        scraper = self._scraper({
+            "2.26.36.10": "https://www.apkmirror.com/apk/w/whatsapp-business-2-26-36-10-release/",
+            "2.26.37.5": "https://www.apkmirror.com/apk/w/whatsapp-business-2-26-37-5-release/",
+        })
+        with tempfile.TemporaryDirectory() as tmp:
+            scraper.download("https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/", "latest",
+                             Path(tmp) / "com.whatsapp.w4b-vlatest-arm64-v8a.apk", "arm64-v8a", "")
+        self.assertTrue(any("2-26-37-5-release" in u for u in scraper.requested))
+        self.assertFalse(any("?s=" in u for u in scraper.requested), "must not search for a literal version")
+
+    def test_unspecific_version_detection(self) -> None:
+        for v in ("latest", "auto", "nightly", "", "LATEST"):
+            self.assertTrue(APKMirrorScraper._is_unspecific(v), v)
+        for v in ("2.26.37.74", "v1.2.3", "11.0.0"):
+            self.assertFalse(APKMirrorScraper._is_unspecific(v), v)
+
+    def test_concrete_version_still_uses_the_search(self) -> None:
+        import tempfile
+        from pathlib import Path
+        scraper = self._scraper({})
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(APKMirrorError):
+            scraper.download("https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/", "2.26.37.74",
+                             Path(tmp) / "x.apk", "arm64-v8a", "")
+        self.assertTrue(any("?s=2.26.37.74" in u for u in scraper.requested))
 
 
 class GitHubAssetTests(unittest.TestCase):

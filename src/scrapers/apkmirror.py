@@ -11,17 +11,23 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
-import re  # noqa: I001
+import contextlib  # noqa: I001
+import re
 from pathlib import Path
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from src.core.logger import pr
 from src.core.network import NetworkManager, ResourceNotFoundError
+from src.core.versions import highest_version
 from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError, _parse_html
 
 _DEFAULT_ARCH: frozenset[str] = frozenset({"universal", "noarch", "arm64-v8a + armeabi-v7a", "arm64-v8a + armeabi"})
 _HOME = "https://www.apkmirror.com/"
+# Versions the builder uses when it could not resolve a concrete one. Searching the
+# site for these literals can never match a release.
+_UNSPECIFIC_VERSIONS: frozenset[str] = frozenset({"", "latest", "auto", "nightly", "dev"})
 
 class APKMirrorError(ScraperError):
     pass
@@ -35,6 +41,10 @@ class APKMirrorScraper(BaseScraper):
     @staticmethod
     def _category_of(url: str) -> str:
         return url.rstrip("/").split("/")[-1]
+
+    @staticmethod
+    def _is_unspecific(version: str) -> bool:
+        return version.strip().lower() in _UNSPECIFIC_VERSIONS or not re.match(r"^v?\d", version.strip())
 
     def fetch_metadata(self, url: str) -> AppMetadata:
         resp_html = self.net.get(url, headers={"Referer": _HOME})
@@ -62,7 +72,18 @@ class APKMirrorScraper(BaseScraper):
         # the one fetch_metadata would have cached.
         self._category = self._category or self._category_of(url)
         release_url = self._release_urls.get(version)
-        if release_url is None:
+
+        if release_url is None and self._is_unspecific(version):
+            # No concrete version to look for, so take the newest release the app's
+            # own listing offers instead of searching for a literal like "latest".
+            if not self._release_urls:
+                with contextlib.suppress(Exception):
+                    self.fetch_metadata(url)
+            if self._release_urls:
+                newest = highest_version(list(self._release_urls))
+                pr(f"No concrete version requested; using APKMirror's newest release '{newest}'")
+                release_url = self._release_urls[newest]
+        elif release_url is None:
             search_url = f"{url.rstrip('/')}/?s={version}"
             search_html = self.net.get(search_url, headers={"Referer": url})
             soup = _parse_html(search_html)

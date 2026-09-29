@@ -238,7 +238,7 @@ APKPure support was removed: its page layout could not be reliably parsed and no
 
 APKMirror and Uptodown sit behind **Cloudflare**. apkforge already applies several layers automatically:
 
-- rotating browser **TLS/HTTP2 impersonation** (`curl_cffi`) across Chrome, Firefox, Edge and Safari;
+- rotating browser **TLS/HTTP2 impersonation** (`curl_cffi`) across Chrome, Firefox, Edge and Safari — every impersonation is tried before a source is called unreachable;
 - realistic navigation headers (`Accept`, `Sec-Fetch-*`, `Referer` chains);
 - lazy cookie warm-up of the domain root, and `Retry-After` back-off.
 
@@ -255,7 +255,7 @@ APKFORGE_PROXY=http://user:pass@gateway.example.com:8080
 FLARESOLVERR_URL=http://localhost:8191
 ```
 
-On **GitHub Actions**, set `APKFORGE_PROXY` as a repository secret, and set the repository **variable** `USE_FLARESOLVERR=true` to start a FlareSolverr container automatically for the build. Direct and GitHub Releases sources are unaffected and need no proxy.
+On **GitHub Actions**, set `APKFORGE_PROXY` as a repository secret, and set the repository **variable** `USE_FLARESOLVERR=true` to start a FlareSolverr container automatically for the build. If the container cannot start the build continues without it rather than failing. Direct and GitHub Releases sources are unaffected and need no proxy.
 
 ## ⚙️ Configuration
 

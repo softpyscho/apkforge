@@ -111,15 +111,32 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 - **A non-app top-level table in `config.toml` gets an actionable error** instead of
   "has no patches defined" (`src/core/config.py`).
 
+- **Bot-challenge mitigations no longer exhaust the HTTP retry budget.** Every warm-up and every
+  impersonation rotation counted against `_MAX_ATTEMPTS` (4), so of the six available mitigations
+  only four ever ran and the rotation could never work through all five impersonations. Both
+  WhatsApp job logs show it stopping at `edge101` and never reaching `safari184`. Verified against
+  a source that only answers the last impersonation: before, `Request failed after 4 attempts`;
+  after, it reaches `safari184` and succeeds in 7 requests. Mitigation retries now have their own
+  bounded allowance (`src/core/network.py`).
+- **APKMirror no longer searches for a literal `latest`.** With no concrete version resolved,
+  `download()` requested `?s=latest`, which cannot match any release — visible in the WhatsApp
+  Business log. An unspecific version now takes the newest release from the app's own listing, and
+  the search is only used for a concrete version (`src/scrapers/apkmirror.py`).
+- **A FlareSolverr container that fails to start no longer fails the build.** The startup step
+  ended in `exit 1`, so enabling `USE_FLARESOLVERR=true` risked turning *every* matrix job red;
+  it now warns and continues, and `FLARESOLVERR_URL` is exported only once the solver answers
+  (`.github/workflows/build.yml`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
   `_write_versions_info()` exclusion handling, the WaEnhancer placeholder guard, the three
   release-note defects in `combine_logs()`, single-pair README marker substitution, cache re-keying
   and hyphenated cached versions. Added `tests/test_scraper_parsing.py`, the first coverage of the
-  scraper parsing layer (APKMirror variant selection, GitHub asset/version derivation, Direct link
-  discovery), plus replays of both WhatsApp job failures and the patch-bundle collision.
-  Suite: 57 -> 96 tests.
+  scraper parsing layer (APKMirror variant selection, unspecific-version handling, GitHub
+  asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
+  the mitigation-budget exhaustion and the patch-bundle collision.
+  Suite: 57 -> 101 tests.
 
 ### Docs
 
@@ -132,13 +149,16 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
-- **WhatsApp Business cannot build until a source is reachable.** Its only configured sources are
-  APKMirror, which serves a Cloudflare managed challenge to GitHub-hosted runners, and
-  `https://whatsapp-business.en.uptodown.com/android`, which now returns **HTTP 410 Gone**. No code
-  change can conjure a source: set the repository variable `USE_FLARESOLVERR=true` and/or the
-  `APKFORGE_PROXY` secret, and update or replace that dead `uptodown-dlurl`. The entry has no
-  `direct-dlurl`; adding one would help but the URL was not verifiable from the build sandbox, so
-  none was guessed.
+- **WhatsApp Business still needs a reachable source.** Its only configured sources are APKMirror,
+  which serves a Cloudflare managed challenge to GitHub-hosted runners, and
+  `https://whatsapp-business.en.uptodown.com/android`, which returns **HTTP 410 Gone** — the page
+  is permanently removed, so that `uptodown-dlurl` has to be updated or replaced. The two fixes
+  above materially raise the odds on APKMirror (the full impersonation ladder now runs, and the
+  download no longer searches for a literal version), but no code change can conjure a source:
+  set the repository variable `USE_FLARESOLVERR=true` and/or the `APKFORGE_PROXY` secret. The
+  entry has no `direct-dlurl`; adding one would help, but the URL was not verifiable from the
+  build sandbox, so none was guessed. The failure stays loud on purpose — masking it would hide a
+  genuine outage.
 - `build.yml` computes a `prerelease` flag from the patch bundles in use and passes it to the release
   step as `PRERELEASE`, but `gh release edit` never consumes it, so every release is published as a
   normal release. This is left as-is deliberately, and the reason is recorded next to the env var in

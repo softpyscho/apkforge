@@ -98,17 +98,27 @@ jobs:
           restore-keys: |
             apk-cache-${{ matrix.id }}-
 
+      # A solver that cannot start must not fail the build: without it the run simply
+      # degrades to the unsolved behaviour, which is what happens when the variable is
+      # unset anyway. FLARESOLVERR_URL is only exported once the container answers.
       - name: Start FlareSolverr (optional)
+        id: flaresolverr
         if: vars.USE_FLARESOLVERR == 'true'
         run: |
           docker rm -f flaresolverr 2>/dev/null || true
-          docker run -d --rm --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+          if ! docker run -d --rm --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest; then
+            echo "::warning title=FlareSolverr::Container failed to start; continuing without a challenge solver"
+            exit 0
+          fi
           for i in {1..30}; do
-            curl -fsS http://localhost:8191/ >/dev/null 2>&1 && exit 0
+            if curl -fsS http://localhost:8191/ >/dev/null 2>&1; then
+              echo "url=http://localhost:8191" >> "$GITHUB_OUTPUT"
+              echo "FlareSolverr is ready"
+              exit 0
+            fi
             sleep 2
           done
-          echo "FlareSolverr failed to start" >&2
-          exit 1
+          echo "::warning title=FlareSolverr::Did not become ready within 60s; continuing without a challenge solver"
 
       - name: Build APKs
         env:
@@ -117,7 +127,7 @@ jobs:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
           KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
           APKFORGE_PROXY: ${{ secrets.APKFORGE_PROXY }}
-          FLARESOLVERR_URL: ${{ vars.USE_FLARESOLVERR == 'true' && 'http://localhost:8191' || '' }}
+          FLARESOLVERR_URL: ${{ steps.flaresolverr.outputs.url }}
         run: uv run main.py ${{ matrix.id }} ${{ matrix.arch }}
 
       - name: Stop FlareSolverr

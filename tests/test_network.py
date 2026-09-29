@@ -65,6 +65,70 @@ class HandleStatusTests(unittest.TestCase):
         self.assertFalse(network._handle_status(_Resp(200), "https://x.example", 1))
 
 
+class _ChallengeSession:
+    """Always answers with a Cloudflare interstitial."""
+
+    def __init__(self) -> None:
+        self.requests: list[str] = []
+
+    def get(self, url, **kwargs):
+        self.requests.append(url)
+        return _Resp(403, {"content-type": "text/html", "cf-mitigated": ""}, "<title>Attention Required</title>")
+
+    def close(self) -> None:
+        pass
+
+
+class MitigationBudgetTests(unittest.TestCase):
+    """A mitigation changes the request, so it must not spend the HTTP retry budget."""
+
+    def _manager(self) -> tuple[network.NetworkManager, _ChallengeSession]:
+        net = object.__new__(network.NetworkManager)
+        session = _ChallengeSession()
+        net._impersonations = list(network._DEFAULT_IMPERSONATIONS)
+        net._imp_index = 0
+        net._proxies = None
+        net._rw = network._ReadWriteLock()
+        net._solved_ua = None
+        net.session = session
+        net._gh_headers = {}
+        net._domain_locks, net._domain_mu = {}, __import__("threading").Lock()
+        net._dest_locks, net._dest_mu = {}, __import__("threading").Lock()
+        net._primed, net._primed_mu = set(), __import__("threading").Lock()
+        net._rotations_made = 0
+        return net, session
+
+    def test_every_impersonation_is_tried_before_giving_up(self) -> None:
+        # Regression: _MAX_ATTEMPTS (4) also counted the warm-up and each rotation, so
+        # only 4 of the 6 mitigations ever ran and a source answering only the last
+        # impersonation was reported unreachable.
+        net, session = self._manager()
+        with (
+            mock.patch.object(network, "_retry_sleep", lambda *a, **k: None),
+            mock.patch.object(network.time, "sleep", lambda *a: None),
+            mock.patch.object(net, "_build_session", return_value=session),
+            mock.patch.dict(os.environ, {"FLARESOLVERR_URL": ""}, clear=False),
+            self.assertRaises(network.NetworkError),
+        ):
+            net.get("https://www.apkmirror.com/apk/x/y")
+
+        navigations = [u for u in session.requests if u.endswith("/y")]
+        self.assertGreaterEqual(len(navigations), len(network._DEFAULT_IMPERSONATIONS),
+                                "expected at least one attempt per impersonation")
+        self.assertGreater(net._rotations_made, 1, "the impersonation should have rotated repeatedly")
+
+    def test_the_loop_is_still_bounded(self) -> None:
+        net, session = self._manager()
+        with (
+            mock.patch.object(network, "_retry_sleep", lambda *a, **k: None),
+            mock.patch.object(network.time, "sleep", lambda *a: None),
+            mock.patch.object(net, "_build_session", return_value=session),
+            self.assertRaises(network.NetworkError),
+        ):
+            net.get("https://www.apkmirror.com/apk/x/y")
+        self.assertLess(len(session.requests), 20, "mitigation retries must stay bounded")
+
+
 class PrimeClaimTests(unittest.TestCase):
     def test_a_domain_is_only_claimed_once(self) -> None:
         net = object.__new__(network.NetworkManager)
