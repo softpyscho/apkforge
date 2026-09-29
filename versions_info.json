@@ -17,8 +17,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.09.29-d4b0f3fe8887",
-      "apk": "Duck.Detector-2026.09.29-d4b0f3fe8887.apk",
+      "version": "2026.09.29-47862f6864e0",
+      "apk": "Duck.Detector-2026.09.29-47862f6864e0.apk",
       "source": "github"
     },
     {
@@ -59,8 +59,8 @@
     {
       "app": "Xodo",
       "label": "Xodo (arm64-v8a)",
-      "version": "11.0.0",
-      "apk": "xodo-morphe-v11.0.0-arm64-v8a.apk",
+      "version": "11.2.0",
+      "apk": "xodo-morphe-v11.2.0-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
