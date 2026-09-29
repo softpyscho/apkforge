@@ -19,7 +19,7 @@ from pathlib import Path
 
 from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
 from src.core.logger import abort, require_ci
-from src.scripts.readme import _patches_label
+from src.scripts.readme import _load_excluded_patches_cache, _patches_label
 
 
 def _parse_log_file(log: Path, collected: list[str]) -> str:
@@ -46,6 +46,8 @@ def combine_logs(logs_dir: Path | str) -> None:
     patches_info = {}
     if Path("patches_info.json").exists():
         patches_info = json.loads(Path("patches_info.json").read_text(encoding="utf-8"))
+
+    excluded_cache = _load_excluded_patches_cache()
 
     collected: list[str] = []
     microg_line = ""
@@ -102,23 +104,27 @@ def combine_logs(logs_dir: Path | str) -> None:
         app = success.get("app", "")
         version = success.get("version", "")
         apk = success.get("apk", "")
-        
-        # Parse architecture from label if possible, or fallback
+        entry = next((e for e in entries if e.table == app), None)
+
+        # The label only carries the arch for multi-arch entries; otherwise it is the
+        # configured one ("all" for entries built as a single universal APK).
         label = success.get("label", "")
-        arch = "arm64-v8a"
         if "(" in label and ")" in label:
             arch = label.split("(")[-1].strip(")")
-            
+        else:
+            arch = entry.arch if entry else "all"
+
         # URL encode the APK filename
         apk_encoded = urllib.parse.quote(apk)
         download_link = f"https://github.com/{repo}/releases/download/{{TAG}}/{apk_encoded}"
         
         # Get patches for this app using readme logic
-        entry = next((e for e in entries if e.table == app), None)
-        if entry:
+        if entry and (entry.mirror or not entry.patches):
+            details_html = "*(None - Stock Mirror)*"
+        elif entry:
             source = next(iter(entry.patches), None)
             general_patches = source_general_patches.get(source, set())
-            details_html = _patches_label(entry, patches_info, general_patches)
+            details_html = _patches_label(entry, patches_info, general_patches, excluded_cache)
         else:
             app_patches = patches_info.get(app, [])
             patch_count = len(app_patches)

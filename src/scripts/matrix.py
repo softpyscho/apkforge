@@ -58,15 +58,18 @@ def _load_entries() -> list:
 def get_matrix() -> None:
     filter_changelog = os.getenv("FILTER_CHANGELOG", "false").lower() == "true"
     patches_sources: list[str] = []
+    dev_sources: set[str] = set()
     has_changelog_keywords = False
     is_prerelease = False
     staged: list = []
     for entry in _load_entries():
         if not entry.enabled:
             continue
-        for src in entry.patches:
+        for src, spec in entry.patches.items():
             if src not in patches_sources:
                 patches_sources.append(src)
+            if spec["version"] == "dev":
+                dev_sources.add(src)
         if any(spec["version"] == "dev" for spec in entry.patches.values()):
             is_prerelease = True
         if entry.changelog_keywords:
@@ -82,7 +85,7 @@ def get_matrix() -> None:
                 if our_date:
                     for ps in patches_sources:
                         try:
-                            text, _ = _fetch_latest_release(ps, net)
+                            text, _ = _fetch_latest_release(ps, net, version="dev" if ps in dev_sources else "latest")
                             changelog_text += text + "\n"
                         except Exception as exc:
                             epr(f"Failed to fetch changelog for '{ps}': {exc}")

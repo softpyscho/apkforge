@@ -5,6 +5,9 @@
 # See the AUTHORS file in the root directory for details.
 # ---------------------------------------------------------
 
+import contextlib
+import json
+import os
 import tempfile
 import unittest
 import zipfile
@@ -181,6 +184,80 @@ class OptimizeBundleTests(unittest.TestCase):
             self.assertTrue(lean.is_bundle)
             self.assertEqual(lean.original_name, "orig.apkm")
             self.assertEqual(lean.source_used, "github")
+
+
+@contextlib.contextmanager
+def _in_tmp_cwd():
+    cwd = Path.cwd()
+    with tempfile.TemporaryDirectory() as tmp:
+        os.chdir(tmp)
+        try:
+            yield Path(tmp)
+        finally:
+            os.chdir(cwd)
+
+
+class WriteVersionsInfoTests(unittest.TestCase):
+    def test_stale_exclusions_of_rebuilt_app_are_dropped(self) -> None:
+        # Regression: a clean rebuild used to leave the previous run's excluded patches
+        # in place, so the README and release notes kept striking them through.
+        with _in_tmp_cwd() as tmp:
+            (tmp / "versions_info.json").write_text(
+                json.dumps({"success": [], "excluded_patches": {"Greenify": ["Unlock Donation"], "Greenify (arm64-v8a)": ["Unlock Donation"]}}),
+                encoding="utf-8",
+            )
+            report = {"success": [{"app": "Greenify", "label": "Greenify (arm64-v8a)"}], "failed": [], "excluded_patches": {}}
+            builder._write_versions_info(report, {"Greenify", "Greenify (arm64-v8a)"})
+            data = json.loads((tmp / "versions_info.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["excluded_patches"], {})
+
+    def test_other_apps_keep_their_exclusions(self) -> None:
+        with _in_tmp_cwd() as tmp:
+            (tmp / "versions_info.json").write_text(
+                json.dumps({"success": [], "excluded_patches": {"Reddit": ["Hide ads"]}}),
+                encoding="utf-8",
+            )
+            report = {"success": [], "failed": [], "excluded_patches": {"Greenify": ["Unlock Donation"]}}
+            builder._write_versions_info(report, {"Greenify"})
+            data = json.loads((tmp / "versions_info.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["excluded_patches"], {"Reddit": ["Hide ads"], "Greenify": ["Unlock Donation"]})
+
+
+class FindPkgNameTests(unittest.TestCase):
+    class _NamelessScraper:
+        def cached_metadata(self, url: str) -> AppMetadata:
+            return AppMetadata(pkg_name="", versions=["1.0"])
+
+    class _Entry:
+        table = "Sample"
+        pkg_name = ""
+
+        def __init__(self, dl_urls: dict[str, str]) -> None:
+            self.dl_urls = dl_urls
+
+    def test_source_without_pkg_name_does_not_shadow_others(self) -> None:
+        # Regression: the Direct scraper never reports a package name, and it is always
+        # tried first, which used to make the whole build run with an empty pkg name.
+        entry = self._Entry({"direct": "d", "apkmirror": "a"})
+        scrapers = {"direct": self._NamelessScraper(), "apkmirror": FakeScraper(["1.0"])}
+        pkg_name, src, failed = builder._find_pkg_name(entry, scrapers)  # type: ignore[arg-type]
+        self.assertEqual(pkg_name, "pkg")
+        self.assertEqual(src, "apkmirror")
+        self.assertEqual(failed, set())
+
+    def test_falls_back_to_nameless_source(self) -> None:
+        entry = self._Entry({"direct": "d"})
+        pkg_name, src, _ = builder._find_pkg_name(entry, {"direct": self._NamelessScraper()})  # type: ignore[arg-type]
+        self.assertEqual(pkg_name, "")
+        self.assertEqual(src, "direct")
+
+    def test_config_pkg_name_still_wins(self) -> None:
+        entry = self._Entry({"direct": "d", "apkmirror": "a"})
+        entry.pkg_name = "com.from.config"
+        scrapers = {"direct": self._NamelessScraper(), "apkmirror": FakeScraper(["1.0"])}
+        pkg_name, src, _ = builder._find_pkg_name(entry, scrapers)  # type: ignore[arg-type]
+        self.assertEqual(pkg_name, "com.from.config")
+        self.assertEqual(src, "direct")
 
 
 class ResolveVersionTests(unittest.TestCase):

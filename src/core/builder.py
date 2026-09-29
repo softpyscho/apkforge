@@ -223,22 +223,34 @@ def _validate_download(path: Path) -> None:
 
 def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[str, str, set[str]]:
     failed: set[str] = set()
+    nameless_src = ""
 
     for src, url in entry.dl_urls.items():
         try:
             metadata = scrapers[src].cached_metadata(url)
-            pkg_name = entry.pkg_name or metadata.pkg_name
-
-            pr(f"Package name of '{entry.table}' is '{pkg_name}'")
-            return pkg_name, src, failed
         except (NetworkError, ScraperError) as exc:
             epr(f"Could not find '{entry.table}' in '{src}': {exc}")
             failed.add(src)
+            continue
+
+        pkg_name = entry.pkg_name or metadata.pkg_name
+        if not pkg_name:
+            # Some sources (e.g. Direct) never expose a package name; keep them as a
+            # download candidate but let a source that knows it answer first.
+            nameless_src = nameless_src or src
+            continue
+
+        pr(f"Package name of '{entry.table}' is '{pkg_name}'")
+        return pkg_name, src, failed
 
     if entry.pkg_name:
         first_src = next(iter(entry.dl_urls.keys()))
         pr(f"Package name of '{entry.table}' is '{entry.pkg_name}' (from config)")
         return entry.pkg_name, first_src, failed
+
+    if nameless_src:
+        wpr(f"No source reported a package name for '{entry.table}'; set 'pkg-name' in config.toml to enable the stock APK cache")
+        return "", nameless_src, failed
 
     raise BuilderError("Package name not found")
 
@@ -726,6 +738,26 @@ def _submit_entries(entries: list[AppEntry], pool: ThreadPoolExecutor, net: Netw
     return futures
 
 
+def _write_versions_info(report_data: dict, built_keys: set[str]) -> None:
+    """Refresh versions_info.json with the results of this run.
+
+    Exclusions recorded for the entries built in this run are replaced rather than
+    merged: a stale key would keep reporting patches as excluded after a later build
+    applied them cleanly. Entries not built in this run keep their recorded exclusions.
+    """
+    v_info_path = Path("versions_info.json")
+    v_data: dict = {}
+    if v_info_path.exists():
+        with contextlib.suppress(Exception):
+            v_data = json.loads(v_info_path.read_text(encoding="utf-8"))
+
+    v_data["success"] = report_data["success"]
+    excluded = {k: v for k, v in (v_data.get("excluded_patches") or {}).items() if k not in built_keys}
+    excluded.update(report_data["excluded_patches"])
+    v_data["excluded_patches"] = excluded
+    v_info_path.write_text(json.dumps(v_data, indent=2))
+
+
 def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> bool:
     if not entries:
         epr("No entries to build")
@@ -753,6 +785,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
         shutil.rmtree(tmp, ignore_errors=True)
 
     log_lines: list[str] = []
+    built_keys: set[str] = set()
     report_data = {"success": [], "failed": [], "excluded_patches": {}}
     for fut in as_completed(futures):
         try:
@@ -761,6 +794,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
             epr(f"Unexpected worker crash: {exc}")
             continue
         if r:
+            built_keys.update((r["app"], r["label"]))
             if r["success"]:
                 log_lines.append(r["log"])
                 report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"], "source": r["source"]})
@@ -771,17 +805,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
                 report_data["failed"].append({"app": r["app"], "label": r["label"], "error": r["error"]})
 
     Path("build.json").write_text(json.dumps(report_data, indent=2))
-    
-    # Also update versions_info.json
-    v_info_path = Path("versions_info.json")
-    v_data = {}
-    if v_info_path.exists():
-        with contextlib.suppress(Exception):
-            v_data = json.loads(v_info_path.read_text(encoding="utf-8"))
-    v_data["success"] = report_data["success"]
-    if report_data["excluded_patches"]:
-        v_data["excluded_patches"] = report_data["excluded_patches"]
-    v_info_path.write_text(json.dumps(v_data, indent=2))
+    _write_versions_info(report_data, built_keys)
 
     Path("patches_info.json").write_text(json.dumps(_patches_info, indent=2))
 

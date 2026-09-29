@@ -30,7 +30,13 @@ import urllib.parse
 from collections import OrderedDict
 from pathlib import Path
 
-from src.core.config import CONFIG_PATH, load_toml, parse_app_entries, parse_config
+from src.core.config import (
+    CONFIG_PATH,
+    ORIGINAL_APK_DIR,
+    load_toml,
+    parse_app_entries,
+    parse_config,
+)
 from src.core.logger import force_utf8_stdio
 
 
@@ -341,7 +347,7 @@ def _apk_sources_label(entry, sources_cache: dict[str, str]) -> str:
         name = labels.get(source_used, source_used.title())
         return f"[{name}]({url})"
 
-    for src_file in Path("unmodified-apks").glob(f"{entry.pkg_name}*.src"):
+    for src_file in (ORIGINAL_APK_DIR.glob(f"{entry.pkg_name}-v*.src") if entry.pkg_name else ()):
         try:
             src = src_file.read_text(encoding="utf-8").strip()
             if src in entry.dl_urls:
@@ -499,12 +505,14 @@ def update_readme() -> bool:
     apps_section = generate_apps_section()
     new_block = f"{start_marker}\n\n{apps_section}\n\n{end_marker}"
 
-    # Replace everything between (and including) the markers
+    # Replace everything between (and including) the first pair of markers. Only the
+    # first pair is substituted: a later mention of the markers (e.g. in prose) would
+    # otherwise be replaced by a second copy of the whole app table.
     pattern = re.compile(
         re.escape(start_marker) + r".*?" + re.escape(end_marker),
         re.DOTALL
     )
-    new_content = pattern.sub(lambda _: new_block, content)
+    new_content = pattern.sub(lambda _: new_block, content, count=1)
 
     update_obtainium_export()
 

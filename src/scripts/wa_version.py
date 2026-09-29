@@ -49,6 +49,11 @@ def _to_wildcard(ver: str) -> str:
     return ver
 
 
+def _is_version(ver: str) -> bool:
+    """True for a concrete version or wildcard, false for placeholders such as 'latest'."""
+    return bool(re.fullmatch(r"\d+(?:\.\d+)*(?:\.xx)?", ver.strip()))
+
+
 def _patch_version_line(content: str, table: str, new_ver: str) -> tuple[str, bool]:
     """Replace the `version` line inside the [table] block, preserving every other key."""
     block_re = re.compile(rf"^\[{re.escape(table)}\](?:\r?\n(?!\[).*)*", re.MULTILINE)
@@ -76,6 +81,10 @@ def update_config_toml() -> None:
     new_content = content
     changed = False
     for table, ver in (("WhatsApp", _to_wildcard(wpp_ver)), ("WhatsApp-Business", _to_wildcard(biz_ver))):
+        if not _is_version(ver):
+            print(f"[!] No recommended version found for [{table}], keeping the configured one", file=sys.stderr)
+            continue
+
         new_content, updated = _patch_version_line(new_content, table, ver)
         if updated:
             print(f"[+] Updated [{table}] version to '{ver}' in config.toml")

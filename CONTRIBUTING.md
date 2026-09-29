@@ -122,7 +122,7 @@ Each `(source, version)` pair is fetched once and reused across every app that r
 - `2.26.30.xx` — **wildcard**: newest available version matching that prefix, falling back to the newest overall if nothing matches.
 - `1.2.3` — pinned: exactly that version, or a source-specific fallback when unavailable.
 
-Value order matters: sources are tried in the order their `*-dlurl` keys appear in the table, after the local cache.
+The local cache in `unmodified-apks/` is checked first. Online sources are then tried in a fixed order — `direct`, `github`, `apkmirror`, `uptodown` — regardless of the order the `*-dlurl` keys appear in the table, and a source that already failed metadata lookup is tried last.
 
 ## ➕ Adding an app or patch source
 

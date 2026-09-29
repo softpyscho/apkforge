@@ -175,8 +175,8 @@ flowchart LR
 ```
 
 1. **Check for updates** — the CI compares upstream patch sources (and stock versions of mirror apps) against the last release.
-2. **Fetch stock APKs** — each app's configured sources are tried in order, with a local cache checked first.
-3. **Apply patches** — auto-detects the recommended compatible version, applies the configured patch bundles and retries while excluding failing patches.
+2. **Fetch stock APKs** — the `unmodified-apks/` cache is checked first, then the configured sources in a fixed order (`direct`, `github`, `apkmirror`, `uptodown`).
+3. **Apply patches** — resolves the version the patch bundles support, applies them, and retries with any failing patch excluded (5 attempts in total).
 4. **Optimize & sign** — split bundles are trimmed, then the APK is signed with your keystore.
 5. **Publish** — APKs, changelogs and per-app patch lists are uploaded to a GitHub Release, and the README/Obtainium export is refreshed.
 
@@ -191,7 +191,7 @@ cd apkforge
 uv run main.py                    # build every enabled app
 uv run main.py Reddit             # build a single app
 uv run main.py Reddit arm64-v8a   # build with an arch override
-uv run main.py clear              # remove build/, temp/ and build.md
+uv run main.py clear              # remove build/, temp/, build.md and build.json
 uv run python -m unittest discover -s tests -t .   # run the test suite
 ```
 
@@ -263,7 +263,7 @@ Everything is configured in [`config.toml`](config.toml). Top-level keys are def
 
 | 🔑 Key | 📝 Description | 🔤 Default | 📌 Scope |
 |:------:|:--------------|:----------:|:--------:|
-| `parallel-jobs` | Number of concurrent builds | `CPU count` | Global |
+| `parallel-jobs` | Number of concurrent builds | CPU count (2 on CI) | Global |
 | `brand` | Brand name used in output filenames | `Morphe` | Global / Per-app |
 | `cli-version` | Morphe CLI version (`latest`, `dev`, or a tag) | `latest` | Global / Per-app |
 | `cli-source` | CLI repository (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` | Global / Per-app |
@@ -271,7 +271,7 @@ Everything is configured in [`config.toml`](config.toml). Top-level keys are def
 | `pkg-name` | Play Store package identifier | fetched from source metadata | Per-app |
 | `arch` | Target architecture (`all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`) | `all` | Per-app |
 | `dpi` | Preferred screen density when variants exist | `""` (any) | Per-app |
-| `version` | Target version: `auto`, `latest`, a fixed version, or a wildcard like `2.26.30.xx` | `auto` | Per-app |
+| `version` | Target version: `auto` (highest version the stable patches support), `latest` (includes experimental patches), a fixed version, or a wildcard like `2.26.30.xx` | `auto` | Per-app |
 | `changelog-keywords` | Keywords that decide whether an app is rebuilt from release notes | `[]` | Per-app |
 | `apkmirror-dlurl` | APKMirror page URL | `-` | Per-app |
 | `uptodown-dlurl` | Uptodown page URL | `-` | Per-app |
@@ -327,7 +327,7 @@ The signature changed. Uninstall the previous build (or back up its data) before
 <details>
 <summary><b>A patch failed and was skipped.</b></summary>
 
-The builder excludes the failing patch and retries (up to 5 times). Excluded patches are annotated in the release notes and the app list.
+The builder excludes the failing patch and retries, for at most 5 patch attempts per app. Excluded patches are annotated in the release notes and the app list. If the last attempt still fails, the builder falls back to an older cached or online version before giving up.
 </details>
 
 <details>
@@ -335,6 +335,60 @@ The builder excludes the failing patch and retries (up to 5 times). Excluded pat
 
 Edit `config.toml` and open a pull request. The README table updates automatically — see [CONTRIBUTING.md](CONTRIBUTING.md).
 </details>
+
+## 🔁 Continuous Integration
+
+| Workflow | Trigger | What it does |
+|:---------|:--------|:-------------|
+| `ci.yml` | Daily cron (10:00 UTC) + manual dispatch | Decides whether anything is out of date, then calls the reusable build workflow. `force_build` skips the check. |
+| `build.yml` | Reusable (called by `ci.yml`) | Creates a draft release, builds one matrix job per app/arch, uploads APKs and per-job reports, merges them and publishes the release. |
+| `lint.yml` | Push / PR touching `src/`, `tests/`, `config.toml`, `pyproject.toml` | Runs ruff and the unit tests, validates `config.toml`, and re-syncs the README + `obtainium.json`. |
+| `cleanup.yml` | Weekly (Sunday 00:00 UTC) | Deletes pre-releases older than 14 days. |
+
+A build only starts when an upstream patch source published a release newer than the last apkforge release, or when an unpinned mirror app has a newer stock version. Release tags are dates (`YY.MM.DD`).
+
+Optional repository settings: secrets `KEYSTORE_BASE64` / `KEYSTORE_PASS` / `KEYSTORE_ALIAS` (signing), `APKFORGE_PROXY`, `TG_TOKEN` / `TG_CHAT` (Telegram); variable `USE_FLARESOLVERR=true` to start a FlareSolverr container for the build.
+
+## 🗂️ Project Structure
+
+```
+main.py                  # CLI entry point
+config.toml              # per-app build configuration
+src/core/
+  builder.py             # orchestration: resolve -> download -> optimize -> patch -> sign
+  config.py              # TOML parsing and validation
+  network.py             # curl_cffi session, retries, per-domain locks, challenge handling
+  patcher.py             # Morphe CLI wrapper (streaming output)
+  prebuilts.py           # CLI jar and .mpp patch bundle fetching
+  versions.py            # version parsing / comparison helpers
+  logger.py              # coloured and GitHub-annotation logging
+src/scrapers/            # apkmirror, uptodown, github, direct (+ shared base)
+src/scripts/             # CI helpers: matrix, logs, readme, telegram, wa_version
+tests/                   # unittest suite
+docs/                    # ARCHITECTURE.md, ROADMAP.md
+```
+
+Generated at runtime and git-ignored: `build/`, `temp/`, `unmodified-apks/`.
+
+## 🧪 Development & Testing
+
+```bash
+uv sync                                              # install locked dependencies into .venv
+uvx ruff@0.16.7 check .                              # lint (same version as CI)
+uv run python -m unittest discover -s tests -t . -v  # unit tests
+uv run python -m src.scripts.readme update           # regenerate the app table + obtainium.json
+```
+
+The app list in this file sits between two generated-block HTML comments, and `obtainium.json` is generated in full — edit `config.toml` and re-run the command above instead of editing either by hand. `src/scripts/matrix.py`, `logs.py` and `telegram.py` refuse to run outside GitHub Actions.
+
+## 🚧 Limitations
+
+- **Uptodown downloads** are gated behind Cloudflare Turnstile; without `FLARESOLVERR_URL` the source is only usable for version lookups, and downloads fall through to another source.
+- **Debug signing** is used when no keystore is configured, which produces a new signature per build and breaks in-place updates.
+- **Patch compatibility** is driven entirely by upstream bundles. If none supports the newest stock version, the build falls back to an older version, and a patch that fails is excluded rather than fixed.
+- **Bundle trimming** keeps only the target ABI, `xxhdpi` and English splits, so other languages and densities are not shipped in mirrored `.apkm` files.
+- **Release notes** list the per-app patch set from the previous build's cache; a brand new app shows no patch list until its first successful build.
+- Pre-release marking is computed by the build matrix but not applied to published releases; every release is published as a normal release.
 
 ## 🤝 Contributing
 
