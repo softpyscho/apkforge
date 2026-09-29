@@ -388,7 +388,7 @@ The app list in this file sits between two generated-block HTML comments, and `o
 - **Patch compatibility** is driven entirely by upstream bundles. If none supports the newest stock version, the build falls back to an older version, and a patch that fails is excluded rather than fixed.
 - **Bundle trimming** keeps only the target ABI, `xxhdpi` and English splits, so other languages and densities are not shipped in mirrored `.apkm` files.
 - **Release notes** list the per-app patch set from the previous build's cache; a brand new app shows no patch list until its first successful build.
-- Pre-release marking is computed by the build matrix but not applied to published releases; every release is published as a normal release.
+- Pre-release marking is computed by the build matrix but not applied to published releases; every release is published as a normal release. Applying it would break the daily update check and every app's Obtainium config, both of which resolve `.../releases/latest` (which skips pre-releases).
 
 ## 🤝 Contributing
 

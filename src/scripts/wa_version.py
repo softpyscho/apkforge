@@ -17,22 +17,30 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from src.core.versions import highest_version
+
 WAENHANCER_ARRAYS_URL = "https://raw.githubusercontent.com/Dev4Mod/WaEnhancer/master/app/src/main/res/values/arrays.xml"
 CONFIG_PATH = Path("config.toml")
 
 
 def fetch_recommended_wa_versions() -> tuple[str, str]:
-    """Fetch the highest recommended WhatsApp and WhatsApp Business versions from WaEnhancer repo."""
+    """Highest recommended WhatsApp / WhatsApp Business versions from the WaEnhancer repo.
+
+    Either value is an empty string when the corresponding upstream array is missing or empty.
+    """
     req = urllib.request.Request(WAENHANCER_ARRAYS_URL, headers={"User-Agent": "Mozilla/5.0"})
     xml_data = urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
     root = ET.fromstring(xml_data)
 
     def _get_highest_ver(array_name: str) -> str:
-        items = []
+        items: list[str] = []
         for sa in root.findall("string-array"):
             if sa.get("name") == array_name:
-                items = [item.text for item in sa.findall("item") if item.text]
-        return items[-1] if items else "latest"
+                items = [t for item in sa.findall("item") if (t := (item.text or "").strip())]
+        # The upstream array happens to be ordered ascending, but that is not guaranteed,
+        # so the highest entry is selected rather than the last one. An empty result is
+        # reported as such: the caller then keeps the configured version.
+        return highest_version(items) if items else ""
 
     wpp_ver = _get_highest_ver("supported_versions_wpp")
     biz_ver = _get_highest_ver("supported_versions_business")

@@ -41,13 +41,33 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 - **The README APK-source column no longer attributes another app's source.** The sidecar lookup
   globbed `*.src` when `pkg-name` was empty and hardcoded the cache directory instead of using
   `ORIGINAL_APK_DIR` (`src/scripts/readme.py`).
+- **The stock APK cache is no longer destroyed by the build that filled it.** A download is named
+  after the *requested* version, so for an entry whose version is a placeholder (`version = "nightly"`)
+  the manifest-extracted version no longer matched the filename: `_cleanup_outdated_apks()` deleted
+  the artifact that had just been fetched, and `_cached_apk_versions()` reported `nightly` as an
+  available version — which outranks every real version in `highest_version()`. The cached artifact
+  and its `.src` / `.orig` sidecars are now re-keyed to the extracted version, so a valid fallback
+  remains on disk while placeholder-versioned entries still re-download every run
+  (`src/core/builder.py`).
+- **Hyphenated versions are no longer truncated when reading the cache.** `_cached_apk_versions()`
+  cut the version at the first hyphen (`-v([^-]+)-`), so a cached `12.19.1-release.0` was reported
+  as `12.19.1` and the cached-APK fallback asked its source for a version that never existed. Four
+  apps currently build hyphenated versions (Twitter, Stremio, Mixplorer, Duck-Detector). The known
+  trailing architecture is now stripped instead (`src/core/builder.py`).
+- **The recommended WhatsApp version is chosen by version ordering, not array position.**
+  `_get_highest_ver()` returned the last `<item>`, which is only correct while upstream stays sorted
+  ascending. It now uses the shared `highest_version()` helper and reports an empty string — rather
+  than a misleading `latest` — when the array is missing (`src/scripts/wa_version.py`).
+- **Interrupting a build no longer leaves partial downloads behind.** The `SIGINT` handler swept only
+  `temp/`, but `NetworkManager.download()` writes `tmp.<name>` next to the destination, i.e. into
+  `unmodified-apks/` (`main.py`).
 
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
   `_write_versions_info()` exclusion handling, the WaEnhancer placeholder guard, the three
-  release-note defects in `combine_logs()`, and single-pair README marker substitution.
-  Suite: 57 -> 68 tests.
+  release-note defects in `combine_logs()`, single-pair README marker substitution, cache re-keying
+  and hyphenated cached versions. Suite: 57 -> 74 tests.
 
 ### Docs
 
@@ -60,13 +80,15 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
-- `build.yml` computes a `prerelease` flag from the patch bundles in use and passes it to the
-  release step as `PRERELEASE`, but `gh release edit` never consumes it, so every release is
-  published as a normal release. Applying the flag was deliberately **not** done here: GitHub's
-  `releases/latest` endpoint skips pre-releases, and `matrix.py::_fetch_our_releases()` relies on it
-  to decide whether a build is needed — marking every release as a pre-release would make the daily
-  cron rebuild everything unconditionally. Fixing this needs a change to the update check too.
-- `wa_version._get_highest_ver()` takes the last `<item>` in the upstream array rather than the
-  highest version. It is correct for the current upstream ordering (ascending) and was therefore
-  left alone.
-- `_cleanup_outdated_apks()` takes an `arch` argument that it never uses.
+- `build.yml` computes a `prerelease` flag from the patch bundles in use and passes it to the release
+  step as `PRERELEASE`, but `gh release edit` never consumes it, so every release is published as a
+  normal release. This is left as-is deliberately, and the reason is now recorded next to the env var
+  in `build.yml`: GitHub resolves `/releases/latest` to the newest **non**-pre-release release, and
+  two things depend on that URL — `matrix.py::_fetch_our_releases()`, which would see no release and
+  make the daily cron rebuild everything, and the Obtainium config of all 20 apps in `obtainium.json`
+  and the README, which tracks `.../releases/latest` and would stop finding updates on every user's
+  device. Wiring the flag up requires changing both first.
+- `_version_from_cached_name()` recognises the architectures in `VALID_ARCHES`; a cache file written
+  by an older revision with a different name shape falls back to cutting the version at the first
+  hyphen.
+- Uptodown downloads still require a browser solver (`FLARESOLVERR_URL`); unchanged by this work.

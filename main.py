@@ -113,6 +113,9 @@ def _sigint_handler(sig: int, frame: object) -> None:
     epr("Interrupted by user")
     for tmp in TEMP_DIR.rglob("tmp*"):
         shutil.rmtree(tmp, ignore_errors=True)
+    # Partial downloads are written next to their destination, not under temp/.
+    for part in ORIGINAL_APK_DIR.glob("tmp.*"):
+        part.unlink(missing_ok=True)
     for ks in TEMP_DIR.glob("*.keystore"):
         ks.unlink(missing_ok=True)
     os._exit(130)

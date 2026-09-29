@@ -271,6 +271,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.version }}
+          # Intentionally NOT passed to `gh release edit`. GitHub resolves
+          # /releases/latest to the newest non-prerelease release, and two things
+          # depend on it: src/scripts/matrix.py::_fetch_our_releases() (the daily
+          # update check would see no release and rebuild everything), and the
+          # Obtainium config of every app in obtainium.json / the README, which
+          # tracks .../releases/latest (marking releases as pre-releases would break
+          # update tracking on every user's device). Wiring this up therefore needs
+          # both of those changed first; see CHANGELOG.md -> Known limitations.
           PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
           uv run python -m src.scripts.logs combine-logs logs | sed "s/{TAG}/$TAG/g" > final.md

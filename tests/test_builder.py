@@ -66,6 +66,31 @@ class CachedVersionsTests(unittest.TestCase):
                 versions = builder._cached_apk_versions("com.example")
         self.assertEqual(sorted(versions), ["1.2.3", "2.0.0"])
 
+    def test_hyphenated_versions_are_not_truncated(self) -> None:
+        # Regression: the version was cut at the first hyphen, so a cached
+        # "12.19.1-release.0" was reported as "12.19.1" and the cached-APK fallback
+        # then asked its source for a version that never existed.
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            for name in (
+                "com.example-v12.19.1-release.0-arm64-v8a.apk",
+                "com.example-v2.3.2-android-armeabi-v7a.apk",
+                "com.example-v6.71.15-API29-x86_64.apk",
+                "com.example-v2026.09.29-d4b0f3fe-all.apkm",
+                "com.example-v1.2.3-x86.apk",
+            ):
+                (cache / name).write_bytes(b"x")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                versions = sorted(builder._cached_apk_versions("com.example"))
+
+        self.assertEqual(versions, [
+            "1.2.3",
+            "12.19.1-release.0",
+            "2.3.2-android",
+            "2026.09.29-d4b0f3fe",
+            "6.71.15-API29",
+        ])
+
     def test_missing_dir_returns_empty(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp) / "missing"):
             self.assertEqual(builder._cached_apk_versions("com.example"), [])
@@ -221,6 +246,69 @@ class WriteVersionsInfoTests(unittest.TestCase):
             builder._write_versions_info(report, {"Greenify"})
             data = json.loads((tmp / "versions_info.json").read_text(encoding="utf-8"))
         self.assertEqual(data["excluded_patches"], {"Reddit": ["Hide ads"], "Greenify": ["Unlock Donation"]})
+
+
+class RenameCachedStockTests(unittest.TestCase):
+    def _cache(self, tmp: Path, name: str) -> builder.DownloadResult:
+        (tmp / name).write_bytes(b"PK\x03\x04")
+        (tmp / name).with_suffix(".src").write_text("github", encoding="utf-8")
+        (tmp / name).with_suffix(".orig").write_text("Duck.Detector.apk", encoding="utf-8")
+        return builder.DownloadResult(path=tmp / name, is_bundle=False, original_name="Duck.Detector.apk", source_used="github")
+
+    def test_placeholder_named_cache_is_rekeyed_and_survives_cleanup(self) -> None:
+        # Regression: the download is named after the requested version, so a placeholder
+        # such as "nightly" made _cleanup_outdated_apks delete the APK it just fetched
+        # and made _cached_apk_versions report "nightly" as an available version -- which
+        # outranks every real version in highest_version().
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            result = self._cache(cache, "Duck.Detector-vnightly-all.apk")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                renamed = builder._rename_cached_stock(result, "Duck.Detector", "all", "2026.09.29-d4b0f3fe")
+                builder._cleanup_outdated_apks("Duck.Detector", keep_version="2026.09.29-d4b0f3fe")
+                versions = builder._cached_apk_versions("Duck.Detector")
+                names = sorted(f.name for f in cache.iterdir())
+                survived = renamed.path.exists()
+
+        self.assertEqual(renamed.path.name, "Duck.Detector-v2026.09.29-d4b0f3fe-all.apk")
+        self.assertTrue(survived)
+        self.assertEqual(renamed.original_name, "Duck.Detector.apk")
+        self.assertEqual(renamed.source_used, "github")
+        self.assertEqual(versions, ["2026.09.29-d4b0f3fe"])
+        self.assertEqual(names, [
+            "Duck.Detector-v2026.09.29-d4b0f3fe-all.apk",
+            "Duck.Detector-v2026.09.29-d4b0f3fe-all.orig",
+            "Duck.Detector-v2026.09.29-d4b0f3fe-all.src",
+        ])
+
+    def test_matching_name_is_left_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            result = self._cache(cache, "com.example-v1.2.3-arm64-v8a.apk")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                self.assertIs(builder._rename_cached_stock(result, "com.example", "arm64-v8a", "1.2.3"), result)
+
+    def test_artifact_outside_the_cache_is_left_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            outside = Path(tmp) / "elsewhere"
+            outside.mkdir()
+            result = self._cache(outside, "com.example-vnightly-all.apk")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp) / "cache"):
+                self.assertIs(builder._rename_cached_stock(result, "com.example", "all", "1.2.3"), result)
+
+    def test_empty_pkg_name_is_left_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            result = self._cache(cache, "-vnightly-all.apk")
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                self.assertIs(builder._rename_cached_stock(result, "", "all", "1.2.3"), result)
+
+
+class VersionFilenamePartTests(unittest.TestCase):
+    def test_strips_metadata_and_v_prefix(self) -> None:
+        self.assertEqual(builder._version_filename_part("v1.2.3"), "1.2.3")
+        self.assertEqual(builder._version_filename_part("1.2.3 [versionCode: 9]"), "1.2.3")
+        self.assertEqual(builder._version_filename_part("2.3.2-android"), "2.3.2-android")
 
 
 class FindPkgNameTests(unittest.TestCase):

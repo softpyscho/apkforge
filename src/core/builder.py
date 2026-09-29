@@ -22,7 +22,14 @@ import zipfile
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from src.core.config import BUILD_DIR, ORIGINAL_APK_DIR, TEMP_DIR, AppEntry, Config
+from src.core.config import (
+    BUILD_DIR,
+    ORIGINAL_APK_DIR,
+    TEMP_DIR,
+    VALID_ARCHES,
+    AppEntry,
+    Config,
+)
 from src.core.logger import IS_GITHUB, epr, is_interrupted, pr, wpr
 from src.core.network import NetworkError, NetworkManager
 from src.core.patcher import PatcherCLI, PatcherError
@@ -178,16 +185,40 @@ def _sanitize_cached_apks() -> None:
                     wpr(f"Could not rename cached file '{cached_file.name}': {exc}")
 
 
+_CACHE_EXTENSIONS: tuple[str, ...] = (".apk", ".apkm", ".xapk")
+# Longest first so "-x86_64" is never mistaken for "-x86".
+_CACHE_ARCH_SUFFIXES: tuple[str, ...] = tuple(sorted(VALID_ARCHES - {"both"}, key=len, reverse=True))
+
+
+def _version_from_cached_name(name: str, prefix: str) -> str:
+    """Version part of a ``<pkg>-v<version>-<arch>.<ext>`` cache filename.
+
+    The version may itself contain hyphens (``12.19.1-release.0``, ``2.3.2-android``),
+    so the known trailing architecture is stripped instead of cutting at the first
+    hyphen -- a truncated version makes the cached-APK fallback ask its source for a
+    version that never existed.
+    """
+    rest = name[len(prefix):]
+    for ext in _CACHE_EXTENSIONS:
+        rest = rest.removesuffix(ext)
+    for arch in _CACHE_ARCH_SUFFIXES:
+        if rest.endswith(f"-{arch}"):
+            return rest[: -len(arch) - 1]
+    return rest.split("-")[0]
+
+
 def _cached_apk_versions(pkg_name: str) -> list[str]:
     """Cleaned versions of the stock APKs cached in ORIGINAL_APK_DIR for pkg_name."""
     versions: list[str] = []
     if not pkg_name or not ORIGINAL_APK_DIR.exists():
         return versions
+
+    prefix = f"{pkg_name}-v"
     for cached_file in ORIGINAL_APK_DIR.iterdir():
-        if not (cached_file.is_file() and cached_file.name.startswith(f"{pkg_name}-v") and cached_file.name.endswith((".apk", ".apkm", ".xapk"))):
+        if not (cached_file.is_file() and cached_file.name.startswith(prefix) and cached_file.name.endswith(_CACHE_EXTENSIONS)):
             continue
-        if m := re.search(r"-v([^-]+)-", cached_file.name):
-            versions.append(clean_version(m.group(1)))
+        if version := clean_version(_version_from_cached_name(cached_file.name, prefix)):
+            versions.append(version)
     return versions
 
 
@@ -308,16 +339,50 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
     return version, is_custom
 
 
-def _cleanup_outdated_apks(pkg_name: str, keep_version: str, arch: str) -> None:
+def _version_filename_part(version: str) -> str:
+    """The version as it appears in a cached stock APK filename."""
+    return re.sub(r"[\[\]\(\)\s]", "", clean_version(version)).lstrip("v")
+
+
+def _cleanup_outdated_apks(pkg_name: str, keep_version: str) -> None:
     """Delete outdated APK versions for pkg_name once a build has successfully completed."""
     if not pkg_name:
         return
-    version_clean = clean_version(keep_version)
-    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
+    version_f = _version_filename_part(keep_version)
     for old_file in (ORIGINAL_APK_DIR.iterdir() if ORIGINAL_APK_DIR.exists() else ()):
         if old_file.is_file() and old_file.name.startswith(f"{pkg_name}-v") and old_file.name.endswith((".apk", ".apkm", ".xapk", ".orig", ".src")) and f"-v{version_f}-" not in old_file.name:
             pr(f"Deleting outdated APK version: {old_file.name}")
             old_file.unlink(missing_ok=True)
+
+
+def _rename_cached_stock(dl_result: DownloadResult, pkg_name: str, arch: str, new_version: str) -> DownloadResult:
+    """Re-key the cached stock artifact after the real version was read from its manifest.
+
+    The download is named after the *requested* version, which may be a placeholder such
+    as ``nightly``. Leaving it under that name makes :func:`_cached_apk_versions` report
+    the placeholder as an available version -- and it outranks every real version -- while
+    :func:`_cleanup_outdated_apks` deletes the artifact that was just fetched, leaving
+    nothing to fall back on when a source goes down.
+    """
+    if not pkg_name or dl_result.path.parent != ORIGINAL_APK_DIR:
+        return dl_result
+
+    target = ORIGINAL_APK_DIR / f"{pkg_name}-v{_version_filename_part(new_version)}-{arch.replace(' ', '')}{dl_result.path.suffix}"
+    if target == dl_result.path:
+        return dl_result
+
+    for suffix in (dl_result.path.suffix, ".src", ".orig"):
+        source = dl_result.path.with_suffix(suffix)
+        if not source.exists():
+            continue
+        try:
+            source.replace(target.with_suffix(suffix))
+        except OSError as exc:
+            wpr(f"Could not re-key cached file '{source.name}': {exc}")
+            return dl_result
+
+    pr(f"Re-keyed cached stock APK to '{target.name}'")
+    return DownloadResult(path=target, is_bundle=dl_result.is_bundle, original_name=dl_result.original_name, source_used=dl_result.source_used)
 
 
 def _should_verify_wildcard(config_version: str, resolved_version: str) -> bool:
@@ -335,8 +400,7 @@ def _should_verify_wildcard(config_version: str, resolved_version: str) -> bool:
 
 def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], dl_from: str, failed_sources: set[str], verify_wildcard: bool = False) -> DownloadResult:
     arch_f = arch.replace(" ", "")
-    version_clean = clean_version(version)
-    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
+    version_f = _version_filename_part(version)
     base_name = f"{pkg_name}-v{version_f}-{arch_f}.apk"
     stock_apk = ORIGINAL_APK_DIR / base_name
 
@@ -452,8 +516,7 @@ def _sanitize_asset_name(name: str) -> str:
 
 def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher: PatcherCLI, list_patches: str, dl_result: DownloadResult, excluded_patches: list[str]) -> Path:
     arch_f = arch.replace(" ", "")
-    version_clean = clean_version(version)
-    version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
+    version_f = _version_filename_part(version)
     auto_patches = patcher.resolve_auto_patches(list_patches)
 
     dynamic_args = list(entry.patcher_args)
@@ -606,6 +669,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 pr(f"Extracted actual version '{real_ver}' from APK manifest for '{entry.table}' (was '{version}')")
                 version = real_ver
                 force = True
+                dl_result = _rename_cached_stock(dl_result, pkg_name, arch, version)
 
         # Strip unused languages / ABIs / densities from split bundles
         dl_result = _maybe_optimize_bundle(dl_result, arch)
@@ -615,14 +679,13 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 apk_name = _sanitize_asset_name(dl_result.original_name)
             else:
                 arch_f = arch.replace(" ", "")
-                version_clean = clean_version(version)
-                version_f = re.sub(r"[\[\]\(\)\s]", "", version_clean).lstrip("v")
+                version_f = _version_filename_part(version)
                 base_name = f"{entry.app_name.lower().replace(' ', '-')}-mirror"
                 ext = ".apkm" if dl_result.is_bundle else ".apk"
                 apk_name = _sanitize_asset_name(f"{base_name}-v{version_f}-{arch_f}{ext}")
             apk_output = BUILD_DIR / apk_name
             shutil.copy(dl_result.path, apk_output)
-            _cleanup_outdated_apks(pkg_name, keep_version=version, arch=arch)
+            _cleanup_outdated_apks(pkg_name, keep_version=version)
 
             pr(f"Mirrored {label}: '{apk_output}'")
             github_asset_name = apk_output.name
@@ -636,7 +699,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
 
         if not patch_success:
             # Fallback to old cached stock APK or lower online version when patching a new version fails
-            version_f = version.replace(" ", "").lstrip("v")
+            version_f = _version_filename_part(version)
             other_cached = [v for v in _cached_apk_versions(pkg_name) if v != version_f]
 
             fallback_ver = None
@@ -674,7 +737,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         if not patch_success:
             raise BuilderError(f"Failed to patch '{label}': {last_patch_exc}")
 
-        _cleanup_outdated_apks(pkg_name, keep_version=version, arch=arch)
+        _cleanup_outdated_apks(pkg_name, keep_version=version)
 
         pr(f"Built {label}: '{apk_output}'")
         github_asset_name = apk_output.name
