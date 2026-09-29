@@ -62,12 +62,64 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   `temp/`, but `NetworkManager.download()` writes `tmp.<name>` next to the destination, i.e. into
   `unmodified-apks/` (`main.py`).
 
+- **A wildcard-pinned mirror no longer fails when no source carries that minor.** This is the
+  WhatsApp failure in run `99159998844`: the resolver picked `2.26.37.74` from Uptodown's version
+  list, the `direct` vendor source served a valid APK of a *different* minor, `_download_apk()`
+  deleted it for not matching `2.26.37.xx`, and APKMirror (Cloudflare) plus Uptodown (Turnstile)
+  both failed — so the build ended with "Stock APK not found" and could never publish again.
+  Sources are now retried once with the wildcard not enforced, and the accepted artifact is
+  relabelled with the version read from its manifest so it is never mislabelled
+  (`src/core/builder.py`).
+- **The wildcard fallback no longer fabricates a version.** With no candidates at all,
+  `_resolve_version()` returned a synthetic `<prefix>.0` — `2.26.37.0` in the WhatsApp Business
+  job — and every source was then asked for a version nobody ever published. It now falls back to
+  `latest` and lets the manifest supply the real value (`src/core/builder.py`).
+- **HTTP 410 Gone is no longer retried.** It is permanent by definition, but it was in the
+  transient-retry set: the WhatsApp Business job spent roughly three minutes re-requesting a
+  removed Uptodown page (8 attempts across two phases) before failing over
+  (`src/core/network.py`).
+- **Two versions of the same patch repo no longer delete each other's bundle.** `cl_dir` is
+  per-**org**, so `github:crimera/piko` at `latest` (Twitter) and at `dev` (Instagram) shared
+  `temp/crimera/`, and the second fetch's `*.mpp` eviction removed the first's file — leaving
+  `mpp_map` pointing at a deleted path and failing that app. Reproduced with a stubbed releases
+  API. Assets fetched or reused in a run are now claimed and never evicted
+  (`src/core/prebuilts.py`).
+- **Excluding a failing auto-detected patch now works.** `build_patch_args()` appended
+  `-e <auto patch>` *after* `extra_args`, where the retry loop puts `-d <failed patch>`, so a
+  failing GmsCore/MicroG or "Disable Play Store updates" patch was re-enabled on every retry and
+  the build died with "failed again after being excluded" (`src/core/patcher.py`).
+- **APKMirror downloads work after a failed metadata fetch.** `_category` was only set in
+  `fetch_metadata()`, so on the builder's try-every-source fallback the release-page filter became
+  `"//"` and never matched. It is now derived from the URL in `download()` too
+  (`src/scrapers/apkmirror.py`).
+- **A real app version starting with `7.1.`/`8.0.`/`9.0.` is no longer discarded.** The
+  Android-platform-version guard in `extract_apk_version()` rejected those outright; they are now
+  only deprioritised, and used when nothing else in the string pool looks like a version
+  (`src/core/builder.py`).
+- **A corrupt cached APK is no longer reused forever.** `_validate_download()` ran on fresh
+  downloads only; the cache-reuse path now validates too and falls through to the sources
+  (`src/core/builder.py`).
+- **Cookie warm-up is claimed under a lock**, so concurrent builds warm a domain once
+  (`src/core/network.py`).
+- **A local build no longer rewrites the contributor's `config.toml`.** `main.py` synced the
+  pinned WhatsApp versions on every full build; it is now CI-only, with
+  `APKFORGE_SYNC_WA_VERSION=1` to opt in (the release job already does this sync and commits it).
+- **Stock mirrors get a readable README badge.** Entries that set no `badge-color` / `badge-icon`
+  produced `badge/Name-?logo=`; they now fall back to the project palette
+  (`src/scripts/readme.py`).
+- **"1 patches" is now "1 patch"** in the README and release notes.
+- **A non-app top-level table in `config.toml` gets an actionable error** instead of
+  "has no patches defined" (`src/core/config.py`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
   `_write_versions_info()` exclusion handling, the WaEnhancer placeholder guard, the three
   release-note defects in `combine_logs()`, single-pair README marker substitution, cache re-keying
-  and hyphenated cached versions. Suite: 57 -> 74 tests.
+  and hyphenated cached versions. Added `tests/test_scraper_parsing.py`, the first coverage of the
+  scraper parsing layer (APKMirror variant selection, GitHub asset/version derivation, Direct link
+  discovery), plus replays of both WhatsApp job failures and the patch-bundle collision.
+  Suite: 57 -> 96 tests.
 
 ### Docs
 
@@ -80,15 +132,23 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
+- **WhatsApp Business cannot build until a source is reachable.** Its only configured sources are
+  APKMirror, which serves a Cloudflare managed challenge to GitHub-hosted runners, and
+  `https://whatsapp-business.en.uptodown.com/android`, which now returns **HTTP 410 Gone**. No code
+  change can conjure a source: set the repository variable `USE_FLARESOLVERR=true` and/or the
+  `APKFORGE_PROXY` secret, and update or replace that dead `uptodown-dlurl`. The entry has no
+  `direct-dlurl`; adding one would help but the URL was not verifiable from the build sandbox, so
+  none was guessed.
 - `build.yml` computes a `prerelease` flag from the patch bundles in use and passes it to the release
   step as `PRERELEASE`, but `gh release edit` never consumes it, so every release is published as a
-  normal release. This is left as-is deliberately, and the reason is now recorded next to the env var
-  in `build.yml`: GitHub resolves `/releases/latest` to the newest **non**-pre-release release, and
-  two things depend on that URL — `matrix.py::_fetch_our_releases()`, which would see no release and
-  make the daily cron rebuild everything, and the Obtainium config of all 20 apps in `obtainium.json`
-  and the README, which tracks `.../releases/latest` and would stop finding updates on every user's
+  normal release. This is left as-is deliberately, and the reason is recorded next to the env var in
+  `build.yml`: GitHub resolves `/releases/latest` to the newest **non**-pre-release release, and two
+  things depend on that URL — `matrix.py::_fetch_our_releases()`, which would see no release and make
+  the daily cron rebuild everything, and the Obtainium config of all 20 apps in `obtainium.json` and
+  the README, which tracks `.../releases/latest` and would stop finding updates on every user's
   device. Wiring the flag up requires changing both first.
 - `_version_from_cached_name()` recognises the architectures in `VALID_ARCHES`; a cache file written
   by an older revision with a different name shape falls back to cutting the version at the first
   hyphen.
-- Uptodown downloads still require a browser solver (`FLARESOLVERR_URL`); unchanged by this work.
+- The relaxed second download pass re-fetches the artifact the strict pass discarded, so a
+  wildcard miss costs one extra download of that APK.

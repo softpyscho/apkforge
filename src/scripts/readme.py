@@ -39,6 +39,9 @@ from src.core.config import (
 )
 from src.core.logger import force_utf8_stdio
 
+_DEFAULT_BADGE_COLOR = "4500FF"
+_DEFAULT_BADGE_ICON = "android"
+
 
 def _source_url(source: str) -> str:
     """Convert a patch source string like 'github:user/repo' to a full URL."""
@@ -207,7 +210,8 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
         else:
             excluded_str = f"<br>{patch_list}" if patch_list else ""
 
-        summary = f"<summary><b>{len(sorted_patches)} patches</b>{summary_warning}</summary>"
+        count = len(sorted_patches)
+        summary = f"<summary><b>{count} {'patch' if count == 1 else 'patches'}</b>{summary_warning}</summary>"
         result = f"<details>{summary}{excluded_str}{options_str}</details>"
     else:
         result = f"*(Pending cache update)*{options_str}"
@@ -219,7 +223,11 @@ def _app_badge(entry) -> str:
     """Generate a clean shield badge for the app linking to Play Store."""
     name = entry.app_name if entry.app_name != entry.table.replace("-", " ") else entry.table.replace("-", " ")
     encoded_name = urllib.parse.quote(name.replace("-", "--"), safe="")
-    badge_url = f"https://img.shields.io/badge/{encoded_name}-{entry.badge_color}?style=flat-square&logo={entry.badge_icon}&logoColor=%23FFFFFF"
+    # An empty colour renders as an unreadable default and an empty logo slug as none,
+    # so entries that set neither (most stock mirrors) get the project's palette.
+    color = entry.badge_color or _DEFAULT_BADGE_COLOR
+    icon = entry.badge_icon or _DEFAULT_BADGE_ICON
+    badge_url = f"https://img.shields.io/badge/{encoded_name}-{color}?style=flat-square&logo={icon}&logoColor=%23FFFFFF"
     
     if entry.pkg_name:
         return f"[![{name}]({badge_url})](https://play.google.com/store/apps/details?id={entry.pkg_name})"

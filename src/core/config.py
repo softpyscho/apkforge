@@ -154,7 +154,7 @@ def validate_config(entries: list[AppEntry]) -> None:
         seen_tables.add(e.table)
         
         if not e.patches and not e.mirror:
-            raise ValueError(f"'{e.table}' has no patches defined")
+            raise ValueError(f"'{e.table}' has no patches defined (every top-level table in config.toml is treated as an app: add a '[{e.table}.patches]' table, set 'mirror = true', or remove it)")
         
         if not e.dl_urls:
             raise ValueError(f"'{e.table}' has no download URLs defined")

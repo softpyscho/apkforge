@@ -109,6 +109,9 @@ def _read_manifest_axml(apk_path: Path) -> bytes | None:
     return None
 
 
+_PLATFORM_VERSION_PREFIXES: tuple[str, ...] = ("7.1.", "8.0.", "9.0.")
+
+
 def extract_apk_version(apk_path: Path) -> str | None:
     """Extract actual versionName string from AndroidManifest.xml inside APK or bundle."""
     axml = _read_manifest_axml(apk_path)
@@ -117,10 +120,14 @@ def extract_apk_version(apk_path: Path) -> str | None:
 
     ver_regex = re.compile(r"^\d+\.\d+(?:\.\d+)+(?:-[a-zA-Z0-9.]+)?$")
     strs = parse_axml_strings(axml)
-    for s in strs:
-        s_clean = s.strip()
-        if ver_regex.match(s_clean) and not s_clean.startswith(("7.1.", "8.0.", "9.0.")):
-            return s_clean
+    candidates = [c for s in strs if ver_regex.match(c := s.strip())]
+    # Android platform versions are common in a manifest's string pool and are not the
+    # app's version, so they are only used when nothing else looks like a version --
+    # an app legitimately on 8.0.x must still be detected.
+    if preferred := [c for c in candidates if not c.startswith(_PLATFORM_VERSION_PREFIXES)]:
+        return preferred[0]
+    if candidates:
+        return candidates[0]
     for s in strs:
         s_clean = s.strip()
         if re.search(r"^\d+\.\d+\.\d+", s_clean):
@@ -331,7 +338,10 @@ def _resolve_version(entry: AppEntry, patcher: PatcherCLI | None, list_patches: 
                 pr(f"Found fallback cached version '{version}' for '{entry.table}' in '{ORIGINAL_APK_DIR}'")
 
         if not version:
-            version = f"{prefix}.0" if is_wildcard else "latest"
+            # A synthetic "<prefix>.0" was never published by anyone, so every source
+            # is asked for a version that cannot exist. "latest" at least lets the
+            # sources serve what they have; the manifest then supplies the real value.
+            version = "latest"
         is_custom = entry.version not in ("auto", "latest")
 
     version = clean_version(version)
@@ -413,6 +423,12 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     for cached, cached_is_bundle in ((stock_apk, False), (stock_apk.with_suffix(".apkm"), True)):
         if not cached.exists():
             continue
+        try:
+            _validate_download(cached)
+        except BuilderError as exc:
+            # _validate_download removes the file, so the sources below are tried next.
+            wpr(f"Discarding unusable cached APK '{cached.name}': {exc}")
+            continue
         pr(f"Reusing existing cached APK: {cached.name}")
         orig_name = ""
         orig_meta = cached.with_suffix(".orig")
@@ -426,21 +442,36 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     if not ordered_sources:
         ordered_sources = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
 
-    for src in ordered_sources:
-        url = entry.dl_urls[src]
-        pr(f"Downloading '{entry.table}' from '{src}'")
-        try:
-            res = scrapers[src].download(url, version, stock_apk, arch, entry.dpi)
-            _validate_download(res.path)
-            if verify_wildcard and entry.version.endswith(".xx") and not _matches_wildcard(res.path, entry.version):
-                res.path.unlink(missing_ok=True)
-                raise BuilderError(f"Downloaded artifact does not match wildcard '{entry.version}'")
-            if res.original_name:
-                res.path.with_suffix(".orig").write_text(res.original_name, encoding="utf-8")
-            res.path.with_suffix(".src").write_text(src, encoding="utf-8")
-            return DownloadResult(path=res.path, is_bundle=res.is_bundle, original_name=res.original_name, source_used=src)
-        except (NetworkError, ScraperError, BuilderError) as exc:
-            epr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
+    def _try_sources(enforce_wildcard: bool) -> DownloadResult | None:
+        for src in ordered_sources:
+            url = entry.dl_urls[src]
+            pr(f"Downloading '{entry.table}' from '{src}'")
+            try:
+                res = scrapers[src].download(url, version, stock_apk, arch, entry.dpi)
+                _validate_download(res.path)
+                if enforce_wildcard and not _matches_wildcard(res.path, entry.version):
+                    res.path.unlink(missing_ok=True)
+                    raise BuilderError(f"Downloaded artifact does not match wildcard '{entry.version}'")
+                if res.original_name:
+                    res.path.with_suffix(".orig").write_text(res.original_name, encoding="utf-8")
+                res.path.with_suffix(".src").write_text(src, encoding="utf-8")
+                return DownloadResult(path=res.path, is_bundle=res.is_bundle, original_name=res.original_name, source_used=src)
+            except (NetworkError, ScraperError, BuilderError) as exc:
+                epr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
+        return None
+
+    enforce = verify_wildcard and entry.version.endswith(".xx")
+    if result := _try_sources(enforce):
+        return result
+
+    if enforce:
+        # Every source either failed or served a different minor. Shipping the stock
+        # APK a source actually has beats failing forever; the caller re-reads the
+        # version from the manifest so the artifact is never mislabelled.
+        wpr(f"No source could supply a '{entry.version}' build of '{entry.table}'; accepting the version they do have")
+        if result := _try_sources(False):
+            return result
+
     raise BuilderError("Stock APK not found")
 
 
@@ -662,10 +693,13 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                 raise exc
 
         # Extract actual versionName from APK manifest if version is unspecific ("latest", "auto", "nightly", etc.)
+        # or if a wildcard pin could not be honoured -- the manifest is the only
+        # trustworthy source for what was actually downloaded.
         real_ver = extract_apk_version(dl_result.path)
         if real_ver:
             real_ver = clean_version(real_ver)
-            if version in ("latest", "auto", "nightly") or not version or not re.search(r"^\d+\.\d+", version) or "[" in version or "(" in version:
+            unmet_wildcard = entry.version.endswith(".xx") and not _matches_wildcard(dl_result.path, entry.version)
+            if unmet_wildcard or version in ("latest", "auto", "nightly") or not version or not re.search(r"^\d+\.\d+", version) or "[" in version or "(" in version:
                 pr(f"Extracted actual version '{real_ver}' from APK manifest for '{entry.table}' (was '{version}')")
                 version = real_ver
                 force = True

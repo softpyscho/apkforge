@@ -248,6 +248,109 @@ class WriteVersionsInfoTests(unittest.TestCase):
         self.assertEqual(data["excluded_patches"], {"Reddit": ["Hide ads"], "Greenify": ["Unlock Donation"]})
 
 
+def _apk_bytes() -> bytes:
+    return b"PK\x03\x04" + b"0" * 200_000
+
+
+class WildcardFallbackDownloadTests(unittest.TestCase):
+    """The WhatsApp failure: the one reachable source served a different minor."""
+
+    class _Entry:
+        table = "WhatsApp"
+        dpi = ""
+
+        def __init__(self) -> None:
+            self.version = "2.26.37.xx"
+            self.dl_urls = {"direct": "d", "apkmirror": "a", "uptodown": "u"}
+
+    class _DirectScraper:
+        """Serves a real APK, but of a minor the wildcard does not cover."""
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def download(self, url, version, dest, arch, dpi):
+            self.calls += 1
+            dest.write_bytes(_apk_bytes())
+            return builder.DownloadResult(path=dest, is_bundle=False, original_name="WhatsApp.apk")
+
+    class _BlockedScraper:
+        def download(self, url, version, dest, arch, dpi):
+            raise builder.NetworkError("Bot challenge")
+
+    def _run(self, verify: bool):
+        direct = self._DirectScraper()
+        scrapers = {"direct": direct, "apkmirror": self._BlockedScraper(), "uptodown": self._BlockedScraper()}
+        # The downloaded artifact is a 2.26.38.x build, so it never matches the pin.
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)),
+            mock.patch.object(builder, "_matches_wildcard", return_value=False),
+        ):
+            result = builder._download_apk(
+                self._Entry(), "2.26.37.74", "arm64-v8a", "com.whatsapp", scrapers,  # type: ignore[arg-type]
+                "direct", {"apkmirror", "uptodown"}, verify_wildcard=verify,
+            )
+            return result, direct.calls, result.path.exists()
+
+    def test_mismatched_artifact_is_accepted_once_no_source_can_match(self) -> None:
+        # Regression: the artifact was discarded and the build failed with "Stock APK
+        # not found", so the mirror could never be published again.
+        result, calls, exists = self._run(verify=True)
+        self.assertEqual(result.source_used, "direct")
+        self.assertTrue(exists)
+        self.assertEqual(calls, 2, "expected a strict pass and then a relaxed retry")
+
+    def test_strict_pass_is_still_preferred(self) -> None:
+        # With verification off the very first attempt is accepted: the relaxed retry
+        # must not become the normal path.
+        _, calls, _ = self._run(verify=False)
+        self.assertEqual(calls, 1)
+
+    def test_all_sources_failing_still_raises(self) -> None:
+        scrapers = {"direct": self._BlockedScraper(), "apkmirror": self._BlockedScraper()}
+        entry = self._Entry()
+        entry.dl_urls = {"direct": "d", "apkmirror": "a"}
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)),
+            self.assertRaises(builder.BuilderError),
+        ):
+            builder._download_apk(entry, "2.26.37.74", "arm64-v8a", "com.whatsapp", scrapers, "direct", set(), verify_wildcard=True)  # type: ignore[arg-type]
+
+
+class ResolveVersionFallbackTests(unittest.TestCase):
+    def test_wildcard_with_no_candidates_does_not_fabricate_a_version(self) -> None:
+        # Regression: this produced "2.26.37.0" -- a version nobody ever published --
+        # and every source was then asked for it.
+        class _Dead:
+            def cached_metadata(self, url):
+                raise builder.NetworkError("410 Gone")
+
+        entry = FakeEntry(version="2.26.37.xx", dl_urls={"apkmirror": "a", "uptodown": "u"})
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            version, _ = builder._resolve_version(entry, None, "", "com.whatsapp.w4b", "apkmirror", {"apkmirror": _Dead(), "uptodown": _Dead()})  # type: ignore[arg-type]
+        self.assertEqual(version, "latest")
+
+
+class CachedDownloadValidationTests(unittest.TestCase):
+    def test_truncated_cached_apk_is_discarded_and_redownloaded(self) -> None:
+        class _Scraper:
+            def download(self, url, version, dest, arch, dpi):
+                dest.write_bytes(_apk_bytes())
+                return builder.DownloadResult(path=dest, is_bundle=False)
+
+        entry = WildcardFallbackDownloadTests._Entry()
+        entry.version = "1.2.3"
+        entry.dl_urls = {"direct": "d"}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            stale = Path(tmp) / "com.example-v1.2.3-arm64-v8a.apk"
+            stale.write_bytes(b"<html>error</html>")
+            result = builder._download_apk(entry, "1.2.3", "arm64-v8a", "com.example", {"direct": _Scraper()}, "direct", set())  # type: ignore[arg-type]
+            self.assertEqual(result.source_used, "direct")
+            self.assertGreater(result.path.stat().st_size, 100_000)
+
+
 class RenameCachedStockTests(unittest.TestCase):
     def _cache(self, tmp: Path, name: str) -> builder.DownloadResult:
         (tmp / name).write_bytes(b"PK\x03\x04")

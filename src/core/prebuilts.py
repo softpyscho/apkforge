@@ -13,6 +13,7 @@
 
 import json
 import re
+import threading
 from pathlib import Path
 
 from src.core.config import TEMP_DIR
@@ -21,6 +22,23 @@ from src.core.network import NetworkManager
 from src.core.versions import highest_tag, version_sort_key
 
 _KNOWN_PREFIXES = ("gitlab:", "github:")
+
+# Assets live in a per-org directory, so two (repo, version) pairs of the same org --
+# e.g. "github:crimera/piko" at both "latest" and "dev" -- share it. Every asset this
+# run fetched or reused is claimed here so a later fetch never evicts a bundle that is
+# still referenced by mpp_map.
+_claimed_assets: set[Path] = set()
+_claimed_mu = threading.Lock()
+
+
+def _claim_asset(path: Path) -> None:
+    with _claimed_mu:
+        _claimed_assets.add(path.resolve())
+
+
+def _is_claimed(path: Path) -> bool:
+    with _claimed_mu:
+        return path.resolve() in _claimed_assets
 
 
 class PrebuiltsError(Exception):
@@ -110,6 +128,7 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
                 raise
 
     if file := _find_cached(cl_dir, ver, ext):
+        _claim_asset(file)
         tag_name = _tag_from_filename(file)
         return file, _build_changelog(tag, org, file.name, tag_name, gitlab, clean_src)
 
@@ -120,8 +139,9 @@ def _fetch_single_asset(src: str, tag: str, ver: str, ext: str, cl_dir: Path, ne
     raw_assets = release.get("assets", {}).get("links", []) if gitlab else release.get("assets", [])
     asset = _get_target_asset(raw_assets, ext, src, ver)
     file = cl_dir / asset["name"]
+    _claim_asset(file)
     for old_file in cl_dir.glob(f"*.{ext}"):
-        if old_file.is_file() and not old_file.name.startswith("tmp."):
+        if old_file.is_file() and not old_file.name.startswith("tmp.") and not _is_claimed(old_file):
             old_file.unlink(missing_ok=True)
 
     asset_url = (asset.get("direct_asset_url") or asset["url"]) if gitlab else asset["url"]

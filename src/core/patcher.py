@@ -143,6 +143,12 @@ class PatcherCLI:
 
     def build_patch_args(self, patches: dict[str, dict], extra_args: list[str], arch: str, auto_patches: tuple[str, str], exclusive: bool = False, force: bool = False) -> list[str]:
         active_auto = {p for p in auto_patches if p}
+        # Anything already disabled -- by config or by the retry loop after a patch
+        # failed -- must not be re-enabled below, or the exclusion is a no-op and the
+        # retry fails on the very same patch.
+        disabled = {a for spec in patches.values() for a in spec["exclude"]}
+        disabled |= {extra_args[i + 1] for i, a in enumerate(extra_args) if a == "-d" and i + 1 < len(extra_args)}
+
         p_args: list[str] = ["-f"] if force else []
         for src, spec in patches.items():
             p_args.extend(("--patches", str(self.mpp_map[(src, spec["version"])])))
@@ -158,6 +164,9 @@ class PatcherCLI:
 
         p_args.extend(extra_args)
         for auto_p in active_auto:
+            if auto_p in disabled:
+                wpr(f"Not re-enabling '{auto_p}' automatically: it is disabled for this build")
+                continue
             p_args.extend(("-e", auto_p))
         p_args.extend(("--striplibs", "arm64-v8a,armeabi-v7a" if arch == "all" else arch))
         return p_args

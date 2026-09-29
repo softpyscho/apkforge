@@ -168,10 +168,12 @@ class _ReadWriteLock:
                 self._cond.notify_all()
 
 def _handle_status(resp, url: str, attempt: int) -> bool:
-    if resp.status_code == 404:
-        raise ResourceNotFoundError(f"Not found (404): {url}")
+    # 404/410 are permanent by definition -- retrying a removed page only burns the
+    # retry budget and delays failing over to the next source.
+    if resp.status_code in (404, 410):
+        raise ResourceNotFoundError(f"Not found ({resp.status_code}): {url}")
 
-    if resp.status_code in (403, 410, 429) or resp.status_code >= 500:
+    if resp.status_code in (403, 429) or resp.status_code >= 500:
         epr(f"HTTP {resp.status_code} for {url}, attempt {attempt}/{_MAX_ATTEMPTS}")
         return True
 
@@ -194,6 +196,7 @@ class NetworkManager:
         self._dest_locks: dict[Path, threading.Lock] = {}
         self._dest_mu = threading.Lock()
         self._primed: set[str] = set()
+        self._primed_mu = threading.Lock()
         if self._proxies:
             epr("Using proxy from environment for all requests")
 
@@ -251,6 +254,14 @@ class NetworkManager:
     def _should_prime(self, netloc: str) -> bool:
         return not any(netloc.endswith(suffix) for suffix in _NO_PRIME_SUFFIXES)
 
+    def _claim_prime(self, netloc: str) -> bool:
+        """True for the first caller to claim the warm-up of netloc."""
+        with self._primed_mu:
+            if netloc in self._primed:
+                return False
+            self._primed.add(netloc)
+            return True
+
     def _prime_domain_locked(self, url: str) -> None:
         parsed = urlparse(url)
         root = f"{parsed.scheme}://{parsed.netloc}/"
@@ -303,8 +314,7 @@ class NetworkManager:
 
     def _mitigate_challenge(self, url: str, netloc: str) -> bool:
         """Warm up cookies or rotate impersonation. Returns True when a retry is worthwhile."""
-        if self._should_prime(netloc) and netloc not in self._primed:
-            self._primed.add(netloc)
+        if self._should_prime(netloc) and self._claim_prime(netloc):
             with _get_lock(self._domain_locks, self._domain_mu, netloc):
                 self._prime_domain_locked(url)
             epr(f"Warmed up cookies for {netloc} after a bot challenge")

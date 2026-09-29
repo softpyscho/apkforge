@@ -32,9 +32,13 @@ class APKMirrorScraper(BaseScraper):
         self._category: str = ""
         self._release_urls: dict[str, str] = {}
 
+    @staticmethod
+    def _category_of(url: str) -> str:
+        return url.rstrip("/").split("/")[-1]
+
     def fetch_metadata(self, url: str) -> AppMetadata:
         resp_html = self.net.get(url, headers={"Referer": _HOME})
-        self._category = url.rstrip("/").split("/")[-1]
+        self._category = self._category_of(url)
         m = re.search(r"play\.google\.com/store/apps/details\?id=([\w.]+)", resp_html)
         if not m:
             raise APKMirrorError("Package name not found")
@@ -53,6 +57,10 @@ class APKMirrorScraper(BaseScraper):
 
     def download(self, url: str, version: str, dest: Path, arch: str, dpi: str) -> DownloadResult:
         referer = url
+        # download() can run after a failed fetch_metadata (the builder falls back to
+        # trying every source), so the category is derived here rather than relying on
+        # the one fetch_metadata would have cached.
+        self._category = self._category or self._category_of(url)
         release_url = self._release_urls.get(version)
         if release_url is None:
             search_url = f"{url.rstrip('/')}/?s={version}"

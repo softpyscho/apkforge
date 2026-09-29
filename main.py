@@ -22,7 +22,7 @@ from pathlib import Path
 
 from src.core.builder import run_build
 from src.core.config import BUILD_DIR, CONFIG_PATH, ORIGINAL_APK_DIR, TEMP_DIR, VALID_ARCHES, AppEntry, load_toml, parse_app_entries, parse_config
-from src.core.logger import abort, epr, mark_interrupted, pr
+from src.core.logger import IS_GITHUB, abort, epr, mark_interrupted, pr
 from src.core.network import NetworkManager
 
 _shutting_down = False
@@ -57,7 +57,10 @@ def _require_java(min_version: int = 21) -> None:
         abort(f"Java {version} found, but Java {min_version}+ is required")
 
 def _build(target_app: str | None = None, arch_override: str | None = None) -> int:
-    if not target_app or target_app in ("WhatsApp", "WhatsApp-Business"):
+    # Only CI syncs the pinned WhatsApp versions: a local build should not rewrite the
+    # contributor's tracked config.toml as a side effect. Set APKFORGE_SYNC_WA_VERSION=1
+    # to opt in locally.
+    if (IS_GITHUB or os.getenv("APKFORGE_SYNC_WA_VERSION")) and (not target_app or target_app in ("WhatsApp", "WhatsApp-Business")):
         try:
             from src.scripts.wa_version import update_config_toml
             update_config_toml()

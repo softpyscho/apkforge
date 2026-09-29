@@ -129,7 +129,7 @@ def combine_logs(logs_dir: Path | str) -> None:
             app_patches = patches_info.get(app, [])
             patch_count = len(app_patches)
             patch_details = "<br>".join(app_patches)
-            details_html = f"<details><summary><b>{patch_count} patches</b></summary>{patch_details}</details>" if patch_count > 0 else ""
+            details_html = f"<details><summary><b>{patch_count} {'patch' if patch_count == 1 else 'patches'}</b></summary>{patch_details}</details>" if patch_count > 0 else ""
         
         print(f"| **{app}** | `{version}` | `{arch}` | [⬇️ APK]({download_link}) {details_html} |")
 

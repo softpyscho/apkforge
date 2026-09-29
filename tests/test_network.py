@@ -46,6 +46,35 @@ class ChallengeDetectionTests(unittest.TestCase):
         self.assertTrue(network._is_managed_challenge(_Resp(403, {"cf-mitigated": "challenge"}), read_body=False))
 
 
+class HandleStatusTests(unittest.TestCase):
+    def test_gone_is_permanent_and_not_retried(self) -> None:
+        # Regression: 410 was retried 4 times per URL. The WhatsApp Business job spent
+        # ~3 minutes re-requesting a removed Uptodown page before failing over.
+        with self.assertRaises(network.ResourceNotFoundError):
+            network._handle_status(_Resp(410), "https://x.example/gone", 1)
+
+    def test_not_found_is_permanent(self) -> None:
+        with self.assertRaises(network.ResourceNotFoundError):
+            network._handle_status(_Resp(404), "https://x.example/missing", 1)
+
+    def test_transient_statuses_are_retried(self) -> None:
+        for status in (403, 429, 500, 503):
+            self.assertTrue(network._handle_status(_Resp(status), "https://x.example", 1), status)
+
+    def test_success_is_not_retried(self) -> None:
+        self.assertFalse(network._handle_status(_Resp(200), "https://x.example", 1))
+
+
+class PrimeClaimTests(unittest.TestCase):
+    def test_a_domain_is_only_claimed_once(self) -> None:
+        net = object.__new__(network.NetworkManager)
+        net._primed = set()
+        net._primed_mu = __import__("threading").Lock()
+        self.assertTrue(net._claim_prime("www.apkmirror.com"))
+        self.assertFalse(net._claim_prime("www.apkmirror.com"))
+        self.assertTrue(net._claim_prime("other.example"))
+
+
 class RetryAfterTests(unittest.TestCase):
     def test_parses_seconds(self) -> None:
         self.assertEqual(network._retry_after(_Resp(429, {"Retry-After": "7"})), 7.0)
