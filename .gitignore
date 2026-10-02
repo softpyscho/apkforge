@@ -12,3 +12,8 @@ morphe.keystore
 unmodified-apks/
 
 .opencode/
+
+# signing keys and credentials: never commit
+*.keystore
+*.jks
+.env
