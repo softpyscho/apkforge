@@ -64,9 +64,10 @@ uv run main.py clear              # delete build/, temp/, build.md and build.jso
 | `KEYSTORE_BASE64` / `KEYSTORE_PASS` / `KEYSTORE_ALIAS` | Signing keystore (see [Signing](#-signing)). |
 | `APKFORGE_PROXY` | Route requests through an HTTP(S)/SOCKS proxy — the most reliable way past IP-based bot blocks (use a residential/mobile proxy). Standard `HTTPS_PROXY`/`ALL_PROXY` are also honoured. |
 | `FLARESOLVERR_URL` | URL of a [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance for solving Cloudflare managed challenges. |
+| `APKFORGE_SYNC_WA_VERSION` | Set to `1` to let a local build refresh the pinned WhatsApp versions from WaEnhancer. CI does this itself; by default a local build leaves `config.toml` alone. |
 | `TG_TOKEN` / `TG_CHAT` | Telegram notification (CI only). |
 
-When a source is behind a Cloudflare managed challenge, apkforge retries with rotating browser impersonation, warms up cookies, then falls back to `FLARESOLVERR_URL` if set. Uptodown additionally gates downloads behind Cloudflare Turnstile (signed AJAX token), so its download path only works with a browser solver; its version lists are still used for resolution. If everything fails, the source is skipped and the next configured source is tried.
+When a source is behind a Cloudflare managed challenge, apkforge retries with rotating browser impersonation (every impersonation is tried — mitigations do not spend the HTTP retry budget), warms up cookies, then falls back to `FLARESOLVERR_URL` if set. Uptodown additionally gates downloads behind Cloudflare Turnstile (signed AJAX token), so its download path only works with a browser solver; its version lists are still used for resolution. If everything fails, the source is skipped and the next configured source is tried.
 
 ## ⚙️ Configuration reference
 

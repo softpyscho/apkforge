@@ -3,12 +3,16 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/softpyscho/apkforge/ci.yml?style=flat-square&logo=githubactions&logoColor=%23FFFFFF&label=Build%20Status&color=%234500FF)](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml)   [![Python 3.13](https://img.shields.io/badge/Python-3.13+-4500FF?style=flat-square&logo=python&logoColor=%23FFFFFF)](https://www.python.org/downloads/)   [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-4500FF?style=flat-square&logo=gnu&logoColor=%23FFFFFF)](LICENSE)   [![Telegram](https://img.shields.io/badge/Telegram-Channel-4500FF?style=flat-square&logo=telegram&logoColor=%23FFFFFF)](https://t.me/apkforge)
 <br>
-[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge#-supported-applications)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge#-supported-applications)
+[![Downloads](https://img.shields.io/github/downloads/softpyscho/apkforge/total?style=flat-square&logo=simpleanalytics&logoColor=%23FFFFFF&label=Downloads&color=%234500FF)](https://github.com/softpyscho/apkforge/releases)   [![Views](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fsoftpyscho%2Fapkforge&label=Views&icon=eye-fill&color=%234500ff&message=&style=flat-square&tz=Europe%2FWarsaw)](https://github.com/softpyscho/apkforge)
 <br><br>
 
-**apkforge** automatically downloads stock Android apps, applies [Morphe](https://github.com/MorpheApp) patch bundles, signs them, and publishes daily releases — plus it mirrors unpatched stock APKs you can install with [Obtainium](https://github.com/ImranR98/Obtainium).
+**apkforge** downloads stock Android apps, applies [Morphe](https://github.com/MorpheApp) patch bundles, signs them and
+publishes a GitHub release every day — and mirrors unmodified stock APKs for apps that have no patches. Everything runs
+on public GitHub Actions, so every build is reproducible and auditable.
 
-<a href="#-features">Features</a> · <a href="#-supported-applications">Apps</a> · <a href="#%EF%B8%8F-how-it-works">How it works</a> · <a href="#-quick-start">Quick start</a> · <a href="#%EF%B8%8F-configuration">Configuration</a> · <a href="CONTRIBUTING.md">Contributing</a> · <a href="docs/ARCHITECTURE.md">Architecture</a> · <a href="docs/ROADMAP.md">Roadmap</a>
+**Using the apps** → <a href="#-supported-applications">App list</a> · <a href="#-installing">Install</a> · <a href="#-troubleshooting">Troubleshooting</a><br>
+**Running your own** → <a href="#%EF%B8%8F-how-it-works">How it works</a> · <a href="#-run-it-yourself">Quick start</a> · <a href="#-configuration">Configuration</a> · <a href="#-signing">Signing</a> · <a href="#-download-sources">Sources</a><br>
+**Developing** → <a href="#-project-structure">Structure</a> · <a href="#-development--testing">Testing</a> · <a href="#-continuous-integration">CI</a> · <a href="CONTRIBUTING.md">Contributing</a> · <a href="docs/ARCHITECTURE.md">Architecture</a>
 </div>
 
 ---
@@ -19,17 +23,18 @@
 |:--|:--|
 | 🛑 **Ad-blocking** | Removes ads and trackers across supported apps. |
 | 🚀 **Enhanced features** | Unlocks premium and quality-of-life functionality. |
-| 🎨 **Customization** | Personalise branding, theming, icons and more via patches. |
-| 💉 **Optimized output** | Split bundles are trimmed to your target ABI, `xxhdpi` and English only. |
-| 🔒 **Persistent** | Patched apps are not overwritten or auto-updated by the Play Store. |
-| 🔄 **Auto-updates** | One-tap updates through per-app [Obtainium](https://github.com/ImranR98/Obtainium) configs. |
-| 🪞 **Stock mirroring** | Re-hosts unmodified APKs for apps that have no patches. |
-| 🤖 **Fully automated** | A daily GitHub Actions cron builds, signs and publishes everything. |
-| 🔍 **Update detection** | Only rebuilds when an upstream patch source or stock version actually changes. |
+| 🎨 **Customization** | Branding, theming, icons and per-patch options. |
+| 💉 **Lean output** | Split bundles are trimmed to one ABI, `xxhdpi` and English. |
+| 🔒 **Persistent** | Patched apps are not replaced or auto-updated by the Play Store. |
+| 🔄 **One-tap updates** | Per-app [Obtainium](https://github.com/ImranR98/Obtainium) configs, plus a full import file. |
+| 🪞 **Stock mirroring** | Re-hosts unmodified APKs for apps with no patches. |
+| 🩹 **Self-healing builds** | A failing patch is excluded and retried; an unavailable version falls back to an older one. |
+| 🔍 **Update detection** | Rebuilds only when a patch source or stock version actually changes. |
 
 ## 📦 Supported Applications
 
-All applications are patched and built automatically via GitHub Actions. They are grouped by patch source, with the applied patches listed per app.
+Grouped by patch source, with the patches applied to each app. Generated from [`config.toml`](config.toml) on every
+build — see [Configuration](#-configuration) to change it.
 
 <!-- APPS_START -->
 
@@ -156,144 +161,150 @@ All applications are patched and built automatically via GitHub Actions. They ar
 
 <!-- APPS_END -->
 
+## 📥 Installing
+
+Grab the APK from the [latest release](https://github.com/softpyscho/apkforge/releases/latest), or let
+[Obtainium](https://github.com/ImranR98/Obtainium) track it for you:
+
+- **One app** — tap its *Add to Obtainium* badge in the [app list](#-supported-applications).
+- **Everything at once** — import [`obtainium.json`](obtainium.json) via *Obtainium → Import/Export → Import from file*.
+
+Release assets are named `<app>-<brand>-v<version>-<arch>.apk` for patched builds and `<app>-mirror-v<version>-<arch>.apk`
+for stock mirrors, so Obtainium can extract the version from the filename.
+
+> [!IMPORTANT]
+> Patched APKs are signed with a **different key** than the Play Store version, so you must uninstall the Play Store
+> build first. Updates only work between builds signed with the *same* key — see [Signing](#-signing).
+
 ## ⚙️ How It Works
 
 ```mermaid
 flowchart LR
-    A([Daily cron / manual dispatch]) --> B{Upstream updated?}
+    A([Daily cron]) --> B{Patch source or<br>stock version newer?}
     B -- no --> Z([Skip])
-    B -- yes --> C[Fetch stock APK]
-    C --> D{Patched or mirror?}
-    D -- mirror --> E[Trim bundle · copy to build/]
-    D -- patched --> F[Apply Morphe patches]
-    F --> G[Sign APK]
-    E --> H[Upload to GitHub Release]
-    G --> H
-    H --> I[Update README · Obtainium · Telegram]
+    B -- yes --> C[Resolve version]
+    C --> D[Fetch stock APK<br>cache → sources]
+    D --> E[Read real version<br>from manifest]
+    E --> F[Trim split bundle]
+    F --> G{Mirror or patch?}
+    G -- mirror --> H[Copy to build/]
+    G -- patch --> I[Apply patches<br>retry, excluding failures]
+    I --> J[Sign]
+    H --> K[Upload to draft release]
+    J --> K
+    K --> L[Merge logs · publish]
+    L --> M[Sync README ·<br>Obtainium · Telegram]
 ```
 
-1. **Check for updates** — the CI compares upstream patch sources (and stock versions of mirror apps) against the last release.
-2. **Fetch stock APKs** — the `unmodified-apks/` cache is checked first, then the configured sources in a fixed order (`direct`, `github`, `apkmirror`, `uptodown`).
-3. **Apply patches** — resolves the version the patch bundles support, applies them, and retries with any failing patch excluded (5 attempts in total).
-4. **Optimize & sign** — split bundles are trimmed, then the APK is signed with your keystore.
-5. **Publish** — APKs, changelogs and per-app patch lists are uploaded to a GitHub Release, and the README/Obtainium export is refreshed.
+1. **Detect updates** — `matrix.py` compares each patch source's newest release, and each unpinned mirror's newest stock
+   version, against the date of the last apkforge release. Nothing newer means no build.
+2. **Resolve the version** — from the patch bundles' compatibility list (`auto` / `latest`) or from the configured value.
+   See [version selection](#version-selection).
+3. **Fetch the stock APK** — the `unmodified-apks/` cache first, then each configured source in a fixed order. A download
+   is rejected unless it is a real APK (ZIP magic, ≥ 100 KB).
+4. **Read the real version** — from `AndroidManifest.xml`, so the artifact is labelled with what it actually contains.
+5. **Trim the bundle** — `.apkm` / `.xapk` split bundles keep only the base APK, the target ABI, `xxhdpi` and English.
+6. **Patch and sign** — the Morphe CLI applies the configured bundles; a patch that fails is excluded and the build
+   retried (5 attempts), then signed with your keystore. Mirrors skip straight to the output.
+7. **Publish** — APKs, a changelog and per-app patch lists go to a GitHub release; the README, `obtainium.json` and the
+   Telegram channel are refreshed.
 
-## 🚀 Quick Start
+## 🚀 Run It Yourself
 
-**Requirements:** [Git](https://git-scm.com/downloads), [Python 3.13+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/getting-started/installation/) and [Java 21+](https://adoptium.net/temurin/releases/?version=21).
+**Requirements:** [Git](https://git-scm.com/downloads), [Python 3.13+](https://www.python.org/downloads/),
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and [Java 21+](https://adoptium.net/temurin/releases/?version=21)
+(the Morphe CLI needs it; mirror-only builds do not).
 
 ```bash
 git clone --depth 1 https://github.com/softpyscho/apkforge.git
 cd apkforge
+uv sync                           # create .venv and install locked dependencies
 
 uv run main.py                    # build every enabled app
-uv run main.py Reddit             # build a single app
-uv run main.py Reddit arm64-v8a   # build with an arch override
-uv run main.py clear              # remove build/, temp/, build.md and build.json
-uv run python -m unittest discover -s tests -t .   # run the test suite
+uv run main.py Reddit             # build one app (the config.toml table name)
+uv run main.py Reddit arm64-v8a   # build one app, overriding its arch
+uv run main.py clear              # delete build/, temp/, build.md and build.json
 ```
 
-Build artifacts are written to `build/`; the report to `build.json`; the log to `build.md`; and cached stock APKs to `unmodified-apks/`.
+| Path | Contents | Tracked |
+|:-----|:---------|:-------:|
+| `build/` | Finished `.apk` / `.apkm` artifacts | no |
+| `unmodified-apks/` | Cached stock APKs plus `.src` / `.orig` sidecars | no |
+| `temp/` | Morphe CLI jars, `.mpp` patch bundles, scratch dirs | no |
+| `build.md` | Human-readable build log (becomes the release notes) | no |
+| `build.json` | Machine-readable report for this run | no |
+| `versions_info.json` | Last published version + source per app | yes |
+| `patches_info.json` | Patches available per app, for the README table | yes |
+| `obtainium.json` | Obtainium import file for every enabled app | yes |
 
-> [!IMPORTANT]
-> Without a signing keystore, the Morphe CLI falls back to its built-in debug key. On CI that produces a **different signature on every release**, which breaks app updates. Configure a keystore (see below) for real deployments.
+`.env` in the project root is loaded automatically. Everything in it is optional:
 
-## 🔑 Signing & Updates
+| Variable | Purpose |
+|:---------|:--------|
+| `KEYSTORE_BASE64` / `KEYSTORE_PASS` / `KEYSTORE_ALIAS` | Signing keystore — see [Signing](#-signing). |
+| `GITHUB_TOKEN` | Raises GitHub API rate limits for CLI, patch-bundle and asset lookups. |
+| `APKFORGE_PROXY` | Route every request through an HTTP(S)/SOCKS proxy. `HTTPS_PROXY`, `HTTP_PROXY` and `ALL_PROXY` (either case) are honoured as fallbacks. |
+| `FLARESOLVERR_URL` | A [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance for solving Cloudflare challenges. |
+| `APKFORGE_SYNC_WA_VERSION` | Set to `1` to let a local build refresh the pinned WhatsApp versions from WaEnhancer. CI does this on its own; local builds leave `config.toml` alone. |
+| `TG_TOKEN` / `TG_CHAT` | Telegram notification. CI only. |
 
-Signing is required for updates to work — Android only accepts an update signed with the same key as the installed app.
+## 🔧 Configuration
 
-Create a `.env` file in the project root:
+Everything lives in [`config.toml`](config.toml). Top-level keys are defaults every app inherits; each app is a TOML
+table whose name is the build target. [CONTRIBUTING.md](CONTRIBUTING.md) has a guided walkthrough.
 
-```env
-KEYSTORE_BASE64=<base64-encoded keystore>
-KEYSTORE_PASS=<keystore password>
-KEYSTORE_ALIAS=<keystore alias>
-```
+### Global keys
 
-Encode an existing keystore with `base64 -w 0 my.keystore`. On GitHub Actions, set the same names as repository secrets.
+| Key | Description | Default |
+|:----|:------------|:--------|
+| `parallel-jobs` | Builds to run concurrently | CPU count, capped at 2 on CI |
+| `brand` | Brand used in output filenames | `Morphe` |
+| `cli-version` | Morphe CLI version: `latest`, `dev` or a tag | `latest` |
+| `cli-source` | CLI repository, `github:owner/repo` or `gitlab:owner/repo` | `github:MorpheApp/morphe-desktop` |
 
-Resolution order when signing:
+### Per-app keys
 
-1. `KEYSTORE_BASE64` + `KEYSTORE_PASS` + `KEYSTORE_ALIAS` (recommended).
-2. A local `morphe.keystore` in the project root, if present. This file is **git-ignored** and never shipped with the repository.
-3. The CLI's built-in debug keystore (not recommended — new signature per release).
+| Key | Description | Default |
+|:----|:------------|:--------|
+| `app-name` | Display name used in filenames and logs | table name, hyphens → spaces |
+| `pkg-name` | Package identifier. Also the stock APK cache key, so setting it is recommended | read from source metadata |
+| `brand` | Overrides the global `brand` | global value |
+| `arch` | `all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64` or `x86`. `both` builds arm64 **and** armeabi as separate artifacts | `all` |
+| `dpi` | Preferred density when a source offers variants (APKMirror / Uptodown) | `""` (any) |
+| `version` | `auto`, `latest`, an exact version, or a wildcard like `2.26.30.xx` — see below | `auto` |
+| `microg` | Apply the bundle's GmsCore/MicroG patch. Needed for Google sign-in in a re-signed app, but makes the app **require** MicroG. When off, the patch is explicitly disabled even if the bundle enables it by default | `false` |
+| `mirror` | Re-host the stock APK without patching | `false` |
+| `keep-filename` | Mirrors only: keep the source filename, sanitized for release URLs | `false` |
+| `exclusive-patches` | Apply only the patches listed under `[App.patches]` | `false` |
+| `patcher-args` | Extra arguments passed straight to the Morphe CLI | `""` |
+| `changelog-keywords` | Rebuild this app only when one of these words appears in the upstream patch notes | `[]` |
+| `badge-color` / `badge-icon` | Hex colour and [simple-icons](https://simpleicons.org/) slug for the README badge | project palette |
+| `enabled` | `false` removes the app from the build, the README table and `obtainium.json` | `true` |
+| `apkmirror-dlurl` / `uptodown-dlurl` / `github-dlurl` / `direct-dlurl` | Where to fetch the stock APK — see [Download sources](#-download-sources) | — |
 
-> [!NOTE]
-> Earlier versions of apkforge verified the downloaded stock APK against a `sig.txt` fingerprint list and shipped a shared public `morphe.keystore` plus `apksigner.jar`. That verification layer and all of its dependencies have been removed; only signing remains.
-
-## 🗂️ Supported Download Sources
-
-| Source | Used for | Configuration key |
-|:-------|:---------|:------------------|
-| **Direct** | Vendor download pages / direct APK links | `direct-dlurl` |
-| **GitHub Releases** | APKs published on GitHub | `github-dlurl` |
-| **APKMirror** | Broad catalogue with multiple variants | `apkmirror-dlurl` |
-| **Uptodown** | Broad catalogue, XAPK support | `uptodown-dlurl` |
-
-APKPure support was removed: its page layout could not be reliably parsed and no build ever succeeded through it. See the [roadmap](docs/ROADMAP.md) for re-adding it with a verified implementation.
-
-## 🛡️ Getting Past Bot Protection
-
-APKMirror and Uptodown sit behind **Cloudflare**. apkforge already applies several layers automatically:
-
-- rotating browser **TLS/HTTP2 impersonation** (`curl_cffi`) across Chrome, Firefox, Edge and Safari — every impersonation is tried before a source is called unreachable;
-- realistic navigation headers (`Accept`, `Sec-Fetch-*`, `Referer` chains);
-- lazy cookie warm-up of the domain root, and `Retry-After` back-off.
-
-When Cloudflare answers with a **managed challenge** (`cf-mitigated: challenge` — the "Just a moment…" page), a JavaScript-capable browser must solve it; no HTTP client can. **Uptodown** additionally gates downloads behind Cloudflare **Turnstile** and a token-signed AJAX endpoint, so automated downloads there always require a browser solver. For those cases, configure one (or both) of the following in `.env` or as CI secrets/variables:
-
-| Variable | What it does |
-|:---------|:-------------|
-| `APKFORGE_PROXY` | Routes every request through an HTTP(S)/SOCKS proxy. A **residential or mobile proxy** is the most reliable fix for blocked IP ranges (e.g. CI runners). |
-| `FLARESOLVERR_URL` | URL of a [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance. It solves the challenge in a real browser and hands back the HTML plus a `cf_clearance` cookie, which apkforge then reuses for the APK download. |
-
-```env
-# .env — either or both
-APKFORGE_PROXY=http://user:pass@gateway.example.com:8080
-FLARESOLVERR_URL=http://localhost:8191
-```
-
-On **GitHub Actions**, set `APKFORGE_PROXY` as a repository secret, and set the repository **variable** `USE_FLARESOLVERR=true` to start a FlareSolverr container automatically for the build. If the container cannot start the build continues without it rather than failing. Direct and GitHub Releases sources are unaffected and need no proxy.
-
-## ⚙️ Configuration
-
-Everything is configured in [`config.toml`](config.toml). Top-level keys are defaults inherited by every app; each app is a TOML table. See [CONTRIBUTING.md](CONTRIBUTING.md) for a guided walkthrough.
-
-| 🔑 Key | 📝 Description | 🔤 Default | 📌 Scope |
-|:------:|:--------------|:----------:|:--------:|
-| `parallel-jobs` | Number of concurrent builds | CPU count (2 on CI) | Global |
-| `brand` | Brand name used in output filenames | `Morphe` | Global / Per-app |
-| `cli-version` | Morphe CLI version (`latest`, `dev`, or a tag) | `latest` | Global / Per-app |
-| `cli-source` | CLI repository (`github:owner/repo` or `gitlab:owner/repo`) | `github:MorpheApp/morphe-desktop` | Global / Per-app |
-| `app-name` | Display name used in the filename and build label | table name | Per-app |
-| `pkg-name` | Play Store package identifier | fetched from source metadata | Per-app |
-| `arch` | Target architecture (`all`, `both`, `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`) | `all` | Per-app |
-| `dpi` | Preferred screen density when variants exist | `""` (any) | Per-app |
-| `version` | Target version: `auto` (highest version the stable patches support), `latest` (includes experimental patches), a fixed version, or a wildcard like `2.26.30.xx` | `auto` | Per-app |
-
-A wildcard is a preference, not a hard requirement: if no source can supply a build matching the prefix, the newest build a source *does* have is used and labelled with the version read from its manifest, rather than failing the app.
-| `changelog-keywords` | Keywords that decide whether an app is rebuilt from release notes | `[]` | Per-app |
-| `apkmirror-dlurl` | APKMirror page URL | `-` | Per-app |
-| `uptodown-dlurl` | Uptodown page URL | `-` | Per-app |
-| `github-dlurl` | GitHub Releases page URL | `-` | Per-app |
-| `direct-dlurl` | Direct download page / APK URL | `-` | Per-app |
-| `mirror` | Re-host the stock APK unpatched | `false` | Per-app |
-| `keep-filename` | For mirrors: keep the source filename (sanitized) | `false` | Per-app |
-| `badge-color` | Hex colour for the README badge | `""` | Per-app |
-| `badge-icon` | [simple-icons](https://simpleicons.org/) slug for the README badge | `""` | Per-app |
-| `microg` | Apply the bundle's GmsCore/MicroG patch, so the app signs in with Google via [MicroG](https://github.com/MorpheApp/MicroG-RE) instead of Play Services. Off means the patch is explicitly disabled, even if the bundle enables it by default | `false` | Per-app |
-| `exclusive-patches` | Apply only the patches listed under `[App.patches]` | `false` | Per-app |
-| `patcher-args` | Extra arguments passed straight to the Morphe CLI | `-` | Per-app |
-| `enabled` | Set to `false` to skip the entry | `true` | Per-app |
-
-**Patch table** — `[AppName.patches]` maps a patch source to what should be applied:
+### Patch table — `[AppName.patches]`
 
 | Field | Description | Default |
-|:-----:|:------------|:-------:|
-| key | Patch source (`github:owner/repo` or `gitlab:owner/repo`) | — |
-| `version` | Bundle version to fetch (`latest`, `dev`, or a tag) | `latest` |
-| `include` | Patch names to apply (empty = all defaults) | `[]` |
-| `exclude` | Patch names to disable | `[]` |
+|:------|:------------|:--------|
+| key | Patch source: `github:owner/repo` or `gitlab:owner/repo` | — |
+| `version` | Bundle version: `latest`, `dev` or a tag | `latest` |
+| `include` | Patches to enable on top of the bundle's defaults | `[]` |
+| `exclude` | Patches to disable | `[]` |
+
+Each `(source, version)` pair is downloaded once and reused by every app that references it.
+
+### Version selection
+
+| Value | Meaning |
+|:------|:--------|
+| `auto` | Highest version the **stable** patches support |
+| `latest` | Highest version the patches support, including experimental ones |
+| `1.2.3` | Exactly that version, or an older fallback if no source has it |
+| `2.26.30.xx` | **Wildcard** — newest version matching the prefix |
+
+A wildcard is a preference, not a guarantee: if no source can supply a matching build, the newest build a source *does*
+have is published, relabelled from its manifest rather than failing the app. If patching a version fails outright, the
+builder retries an older cached or online version before giving up.
 
 ```toml
 [Reddit]
@@ -307,160 +318,264 @@ patcher-args = "-e 'Custom branding name for Reddit' -OappName='Reddit'"
 "github:MorpheApp/morphe-patches" = []
 ```
 
-## 📲 Obtainium
+Validate any change before committing:
 
-Every app has a one-click **Add to Obtainium** badge in the [app list](#-supported-applications). A complete import file is regenerated on every build as [`obtainium.json`](obtainium.json) — import it in Obtainium via *Add App → Import/Export → Import from file* to track every mirrored and patched app at once.
+```bash
+uv run python -c "from src.core.config import load_toml, parse_config, parse_app_entries, CONFIG_PATH; d = load_toml(CONFIG_PATH); parse_app_entries(d, parse_config(d))"
+```
 
-## ❓ FAQ & Troubleshooting
+## 🔑 Signing
+
+Android only accepts an update signed with the same key as the installed app, so a stable keystore is what makes
+updates work at all. Create a `.env` in the project root:
+
+```env
+KEYSTORE_BASE64=<base64-encoded keystore>
+KEYSTORE_PASS=<keystore password>
+KEYSTORE_ALIAS=<keystore alias>
+```
+
+Encode an existing keystore with `base64 -w 0 my.keystore`. On GitHub Actions, set the same three names as repository
+secrets. The builder picks, in order:
+
+1. `KEYSTORE_BASE64` + `KEYSTORE_PASS` + `KEYSTORE_ALIAS` — recommended. Decoded to a temporary file that is deleted
+   when the run ends, and the password is redacted from all logs.
+2. A `morphe.keystore` file in the project root, if present. Git-ignored and never shipped with the repository.
+3. The Morphe CLI's built-in debug key — **a new signature on every run**, which makes in-place updates impossible.
+
+> [!NOTE]
+> Earlier versions verified downloaded stock APKs against a SHA-256 `sig.txt` list (`strict-sigcheck` / `skip-sigcheck`,
+> `apksigner.jar`). That layer and its dependencies were removed; only signing remains.
+
+## 🌐 Download Sources
+
+Add any combination of `*-dlurl` keys to an app. The local cache is checked first, then the sources in this fixed
+order — not the order they appear in the table. A source whose metadata lookup already failed is skipped unless
+nothing else is left to try:
+
+| Order | Key | Best for | Notes |
+|:-----:|:----|:---------|:------|
+| 1 | `direct-dlurl` | Vendor download pages, direct APK links | Scrapes the page for an APK link. Usually serves only the newest version |
+| 2 | `github-dlurl` | APKs published as GitHub release assets | Point at a release tag; assets are matched by version and arch |
+| 3 | `apkmirror-dlurl` | Broad catalogue, every old version, APK + bundle variants | Behind Cloudflare |
+| 4 | `uptodown-dlurl` | Broad catalogue, XAPK support | Version lists work; downloads need a browser solver |
+
+APKPure support was removed — its layout could not be parsed reliably and no build ever succeeded through it. See the
+[roadmap](docs/ROADMAP.md).
+
+### Getting past bot protection
+
+APKMirror and Uptodown sit behind **Cloudflare**. apkforge handles what an HTTP client can:
+
+- rotating TLS/HTTP2 **browser impersonation** (`curl_cffi`) across Chrome, Firefox, Edge and Safari — every
+  impersonation is tried before a source is called unreachable;
+- realistic navigation headers (`Accept`, `Sec-Fetch-*`, `Referer` chains) and a lazy cookie warm-up of the domain root;
+- `Retry-After` backoff, per-domain request serialisation, and immediate failover on a permanent `404` / `410`.
+
+A Cloudflare **managed challenge** (`cf-mitigated`, the "Just a moment…" page) can only be solved by a real browser, and
+Uptodown additionally gates downloads behind **Turnstile**. For those, configure either:
+
+| Variable | What it does |
+|:---------|:-------------|
+| `APKFORGE_PROXY` | Routes requests through an HTTP(S)/SOCKS proxy. A **residential or mobile** proxy is the most reliable fix for blocked CI IP ranges. |
+| `FLARESOLVERR_URL` | A [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) instance. Solves the challenge in a real browser and returns the HTML plus a `cf_clearance` cookie, which apkforge reuses for the download. |
+
+On GitHub Actions, set `APKFORGE_PROXY` as a secret and the repository **variable** `USE_FLARESOLVERR=true` to start a
+solver container for the build. If the container fails to start the build continues without it. Direct and GitHub
+Releases sources need neither.
+
+## 🤖 Continuous Integration
+
+| Workflow | Trigger | What it does |
+|:---------|:--------|:-------------|
+| `ci.yml` | Daily cron (10:00 UTC) + manual dispatch | Decides whether anything is out of date, then calls the build workflow. `force_build` skips the check |
+| `build.yml` | Called by `ci.yml`, or dispatched | Opens a draft release, runs one job per app/arch, uploads artifacts and per-job reports, merges them, publishes |
+| `lint.yml` | Push / PR touching `src/`, `tests/`, `config.toml`, `pyproject.toml` | ruff + unit tests + config validation, then re-syncs the README and `obtainium.json` |
+| `cleanup.yml` | Weekly (Sunday 00:00 UTC) | Deletes pre-releases older than 14 days |
+
+Release tags are dates (`YY.MM.DD`). Each app/arch builds in its own job with `fail-fast: false`, so one unreachable
+source cannot stop the rest, and the release still publishes. Stock APKs are cached per app between runs.
+
+Optional repository settings: secrets `KEYSTORE_BASE64`, `KEYSTORE_PASS`, `KEYSTORE_ALIAS`, `APKFORGE_PROXY`,
+`TG_TOKEN`, `TG_CHAT`; variable `USE_FLARESOLVERR`.
+
+## 📁 Project Structure
+
+```
+main.py                  # CLI entry point: build / clear
+config.toml              # every app and its build settings
+src/core/
+  builder.py             # orchestration: resolve → download → trim → patch → sign → report
+  config.py              # TOML parsing and validation
+  network.py             # curl_cffi session, retries, per-domain locks, challenge handling
+  patcher.py             # Morphe CLI wrapper, argument building, streaming output
+  prebuilts.py           # CLI jar and .mpp patch bundle fetching
+  versions.py            # version parsing and comparison
+  logger.py              # coloured and GitHub-annotation logging
+src/scrapers/
+  base.py                # scraper interface, metadata/result types, factory
+  apkmirror.py           # variant table parsing, release pages
+  uptodown.py            # version API, variant files
+  github.py              # release assets by version and arch
+  direct.py              # APK links on a vendor page
+src/scripts/             # helpers; matrix/logs/telegram refuse to run outside GitHub Actions
+  matrix.py              # update detection and the build matrix
+  logs.py                # merge per-job logs into release notes
+  readme.py              # regenerate the app table and obtainium.json
+  telegram.py            # release notification
+  wa_version.py          # sync WhatsApp pins from WaEnhancer
+tests/                   # unittest suite
+docs/                    # ARCHITECTURE.md, ROADMAP.md
+```
+
+## 🧪 Development & Testing
+
+```bash
+uv sync                                              # install locked dependencies
+uvx ruff@0.16.7 check .                              # lint, same version as CI
+uv run python -m unittest discover -s tests -t . -v  # 117 unit tests, no network needed
+uv run python -m src.scripts.readme update           # regenerate the app table + obtainium.json
+```
+
+Both lint and tests run in CI on every push and pull request touching `src/`, `tests/`, `config.toml` or
+`pyproject.toml`. Lint rules live in `pyproject.toml` (`E`, `F`, `B`, `I`, `UP`, `RUF`, `SIM`, `C4`, `PTH`, `G`, `PIE`;
+`E501` off).
+
+The app list between the `APPS_START` / `APPS_END` comments in this file, and all of `obtainium.json`, are generated —
+edit `config.toml` and re-run the command above instead of editing them by hand.
+
+## ❓ Troubleshooting
 
 <details>
-<summary><b>Why does a patched app ask me to install MicroG?</b></summary>
+<summary><b>An app asks me to install MicroG.</b></summary>
 
-It shouldn't, unless the app is set to. A GmsCore/MicroG patch rewires an app's Google Play Services
-calls to [MicroG](https://github.com/MorpheApp/MicroG-RE), which is what makes Google sign-in work in a
-re-signed APK — but it also makes the app **require** MicroG at runtime. It is only worth having for apps
-you actually sign into with a Google account.
+It should not, unless the app opts in. A GmsCore/MicroG patch rewires an app's Google Play Services calls to
+[MicroG](https://github.com/MorpheApp/MicroG-RE), which is what makes Google sign-in work in a re-signed APK — but it
+also makes the app **require** MicroG at runtime, so it is only worth having for apps you actually sign into.
 
-Until this was fixed the builder force-enabled any such patch it found in an app's bundle, so apps that
-never touch Google sign-in (Xodo, Amazon Prime Video) were built with `-e MicroG integration` and then
-demanded MicroG. It is now opt-in: set `microg = true` on an app in `config.toml` to apply the patch, and
-leave it out (the default) to have it explicitly disabled.
+Set `microg = true` on an app in `config.toml` to apply the patch; leaving it out (the default) disables the patch
+explicitly, even when the patch bundle enables it by default.
+
+</details>
+
+<details>
+<summary><b>An app failed to install, or stopped updating.</b></summary>
+
+The signature changed. Uninstall the previous build — backing up its data first if you need it — and reinstall. To keep
+updates working long-term, build with your own keystore and keep using it; see [Signing](#-signing).
+
+</details>
+
+<details>
+<summary><b>A build fails with "Stock APK not found".</b></summary>
+
+Every configured source refused. On GitHub-hosted runners this is almost always Cloudflare: APKMirror serves a managed
+challenge and Uptodown gates downloads behind Turnstile, neither of which an HTTP client can solve. Set the repository
+variable `USE_FLARESOLVERR=true` and/or the `APKFORGE_PROXY` secret — see
+[Getting past bot protection](#getting-past-bot-protection).
+
+A `HTTP 410` in the log means something different: that source page was permanently removed and its `*-dlurl` in
+`config.toml` needs updating.
+
+</details>
+
+<details>
+<summary><b>A patch was skipped, or an app shows fewer patches than expected.</b></summary>
+
+When a patch fails to apply, the builder excludes it and retries — up to 5 attempts per app — and annotates it in the
+release notes and the app table. If every attempt fails, it falls back to an older cached or online version of the app
+before giving up. Patch compatibility is entirely up to the upstream bundles; report broken patches to their authors.
 
 </details>
 
 <details>
 <summary><b>Where did WhatsApp go? How do I keep it on a WaEnhancer-supported version?</b></summary>
 
-The `[WhatsApp]` and `[WhatsApp-Business]` entries are disabled (`enabled = false` in `config.toml`).
-They are pinned to the newest version [WaEnhancer](https://github.com/Dev4Mod/WaEnhancer) supports, but
-the only source reachable from GitHub-hosted runners is `whatsapp.com`, which serves the **newest** build
-only — so the pinned version cannot be fetched, and WhatsApp Business' Uptodown page returns HTTP 410.
+`[WhatsApp]` and `[WhatsApp-Business]` are disabled (`enabled = false`). They are pinned to the newest version
+[WaEnhancer](https://github.com/Dev4Mod/WaEnhancer) supports, but the only source reachable from GitHub-hosted runners
+is `whatsapp.com`, which serves the **newest** build only — so the pinned version cannot be fetched. WhatsApp Business'
+Uptodown page also returns HTTP 410.
 
-You do not need this repository for it: **Obtainium can track a WaEnhancer-supported version by itself.**
-Add WhatsApp in Obtainium using the **APKMirror** source (`https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/`),
-then in the app's settings set:
+You do not need this repository for it: **Obtainium can track a WaEnhancer-supported version by itself.** Add WhatsApp
+using the **APKMirror** source (`https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/`) and set:
 
 | Setting | Value |
 |:--------|:------|
 | `filterReleaseTitlesByRegEx` | `2\.26\.3[4-7]\.` — the versions WaEnhancer currently supports |
 | `fallbackToOlderReleases` | **on**, so Obtainium walks back to the newest *matching* release |
 
-APKMirror release titles carry the version (e.g. *WhatsApp Messenger 2.26.37.74*), so the regex pins the
-range. Update the regex when WaEnhancer's
-[`supported_versions_wpp`](https://github.com/Dev4Mod/WaEnhancer/blob/master/app/src/main/res/values/arrays.xml)
-list changes — once per WaEnhancer release, not per WhatsApp release. For WhatsApp Business use
-`https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/` and `supported_versions_business`.
+APKMirror release titles carry the version (*WhatsApp Messenger 2.26.37.74*), so the regex pins the range. Update it
+when WaEnhancer's [`supported_versions_wpp`](https://github.com/Dev4Mod/WaEnhancer/blob/master/app/src/main/res/values/arrays.xml)
+changes — once per WaEnhancer release, not per WhatsApp release. For Business use the `whatsapp-business` URL and
+`supported_versions_business`. Uptodown declares no such filter, so prefer APKMirror.
 
-The Uptodown source declares no such filter, so prefer APKMirror for this. To resume mirroring here
-instead, set `enabled = true` and configure `USE_FLARESOLVERR` / `APKFORGE_PROXY` so the build can reach
-a source that carries older versions.
-</details>
+To mirror here again instead, set `enabled = true` and configure a solver or proxy so the build can reach a source that
+carries older versions.
 
-<details>
-<summary><b>A build fails with "Stock APK not found".</b></summary>
-
-Every configured source refused. On GitHub-hosted runners this is usually Cloudflare: APKMirror serves a managed challenge and Uptodown gates downloads behind Turnstile, and neither can be solved by an HTTP client. Set the repository **variable** `USE_FLARESOLVERR=true` (the build workflow then starts a solver container itself) and/or the `APKFORGE_PROXY` secret. Check the job log for `HTTP 410` too — that means the source page was removed and the `*-dlurl` in `config.toml` needs updating.
 </details>
 
 <details>
 <summary><b>Why is an app missing or out of date?</b></summary>
 
-The daily build only publishes an app when its upstream patch source (or stock version) changed, or when a build succeeds. Check the latest release assets and the workflow logs; failed builds are reported in the release notes.
-</details>
+A build only runs when an upstream patch source or stock version is newer than the last release, and an app is only
+published when its build succeeds. Check the [latest release](https://github.com/softpyscho/apkforge/releases/latest) —
+failures are listed in the release notes — and the
+[workflow logs](https://github.com/softpyscho/apkforge/actions/workflows/ci.yml).
 
-<details>
-<summary><b>An app failed to install after updating.</b></summary>
-
-The signature changed. Uninstall the previous build (or back up its data) before installing. To keep updates working long-term, use a consistent personal keystore.
-</details>
-
-<details>
-<summary><b>A patch failed and was skipped.</b></summary>
-
-The builder excludes the failing patch and retries, for at most 5 patch attempts per app. Excluded patches are annotated in the release notes and the app list. If the last attempt still fails, the builder falls back to an older cached or online version before giving up.
 </details>
 
 <details>
 <summary><b>How do I add or remove an app?</b></summary>
 
-Edit `config.toml` and open a pull request. The README table updates automatically — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Edit `config.toml`; no workflow changes are needed. The README table and `obtainium.json` regenerate themselves. See
+[CONTRIBUTING.md](CONTRIBUTING.md) → *Adding an app or patch source*.
+
 </details>
-
-## 🔁 Continuous Integration
-
-| Workflow | Trigger | What it does |
-|:---------|:--------|:-------------|
-| `ci.yml` | Daily cron (10:00 UTC) + manual dispatch | Decides whether anything is out of date, then calls the reusable build workflow. `force_build` skips the check. |
-| `build.yml` | Reusable (called by `ci.yml`) | Creates a draft release, builds one matrix job per app/arch, uploads APKs and per-job reports, merges them and publishes the release. |
-| `lint.yml` | Push / PR touching `src/`, `tests/`, `config.toml`, `pyproject.toml` | Runs ruff and the unit tests, validates `config.toml`, and re-syncs the README + `obtainium.json`. |
-| `cleanup.yml` | Weekly (Sunday 00:00 UTC) | Deletes pre-releases older than 14 days. |
-
-A build only starts when an upstream patch source published a release newer than the last apkforge release, or when an unpinned mirror app has a newer stock version. Release tags are dates (`YY.MM.DD`).
-
-Optional repository settings: secrets `KEYSTORE_BASE64` / `KEYSTORE_PASS` / `KEYSTORE_ALIAS` (signing), `APKFORGE_PROXY`, `TG_TOKEN` / `TG_CHAT` (Telegram); variable `USE_FLARESOLVERR=true` to start a FlareSolverr container for the build.
-
-## 🗂️ Project Structure
-
-```
-main.py                  # CLI entry point
-config.toml              # per-app build configuration
-src/core/
-  builder.py             # orchestration: resolve -> download -> optimize -> patch -> sign
-  config.py              # TOML parsing and validation
-  network.py             # curl_cffi session, retries, per-domain locks, challenge handling
-  patcher.py             # Morphe CLI wrapper (streaming output)
-  prebuilts.py           # CLI jar and .mpp patch bundle fetching
-  versions.py            # version parsing / comparison helpers
-  logger.py              # coloured and GitHub-annotation logging
-src/scrapers/            # apkmirror, uptodown, github, direct (+ shared base)
-src/scripts/             # CI helpers: matrix, logs, readme, telegram, wa_version
-tests/                   # unittest suite
-docs/                    # ARCHITECTURE.md, ROADMAP.md
-```
-
-Generated at runtime and git-ignored: `build/`, `temp/`, `unmodified-apks/`.
-
-## 🧪 Development & Testing
-
-```bash
-uv sync                                              # install locked dependencies into .venv
-uvx ruff@0.16.7 check .                              # lint (same version as CI)
-uv run python -m unittest discover -s tests -t . -v  # unit tests
-uv run python -m src.scripts.readme update           # regenerate the app table + obtainium.json
-```
-
-The app list in this file sits between two generated-block HTML comments, and `obtainium.json` is generated in full — edit `config.toml` and re-run the command above instead of editing either by hand. `src/scripts/matrix.py`, `logs.py` and `telegram.py` refuse to run outside GitHub Actions.
 
 ## 🚧 Limitations
 
-- **Uptodown downloads** are gated behind Cloudflare Turnstile; without `FLARESOLVERR_URL` the source is only usable for version lookups, and downloads fall through to another source.
-- **Debug signing** is used when no keystore is configured, which produces a new signature per build and breaks in-place updates.
-- **Patch compatibility** is driven entirely by upstream bundles. If none supports the newest stock version, the build falls back to an older version, and a patch that fails is excluded rather than fixed.
-- **Bundle trimming** keeps only the target ABI, `xxhdpi` and English splits, so other languages and densities are not shipped in mirrored `.apkm` files.
-- **Release notes** list the per-app patch set from the previous build's cache; a brand new app shows no patch list until its first successful build.
-- Pre-release marking is computed by the build matrix but not applied to published releases; every release is published as a normal release. Applying it would break the daily update check and every app's Obtainium config, both of which resolve `.../releases/latest` (which skips pre-releases).
+- **Uptodown downloads** need a browser solver (`FLARESOLVERR_URL`); without one the source is usable for version
+  lookups only and downloads fall through to another source.
+- **Debug signing** is used when no keystore is configured, producing a new signature per build and breaking in-place
+  updates.
+- **Patch compatibility** is upstream's. If no bundle supports the newest stock release the build falls back to an older
+  version, and a failing patch is excluded rather than fixed.
+- **Bundle trimming** ships only the target ABI, `xxhdpi` and English splits, so other languages and densities are not
+  included in mirrored `.apkm` files.
+- **A brand-new app** shows no patch list until its first successful build, because the table is generated from the
+  previous run's cache.
+- **Pre-release marking** is computed by the build matrix but deliberately not applied: GitHub resolves
+  `/releases/latest` to the newest non-pre-release, and both the update check and every Obtainium config depend on that
+  URL.
 
 ## 🤝 Contributing
 
-Pull requests are welcome! Read the [contributing guide](CONTRIBUTING.md), check the [architecture notes](docs/ARCHITECTURE.md), and see the [roadmap](docs/ROADMAP.md) for planned improvements.
+Pull requests are welcome — read the [contributing guide](CONTRIBUTING.md), the
+[architecture notes](docs/ARCHITECTURE.md) and the [roadmap](docs/ROADMAP.md). Run `ruff` and the unit tests before
+opening one. AI-assisted contributions are fine, but review every line you submit; you are responsible for it. By
+contributing you agree to license your work under the **GNU GPLv3**.
 
-Bug in the **script**? Use the [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml). Issue with a **built APK**? Use the [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml).
+Bug in the **build script**? → [Script Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=script.yml).
+Problem with a **built APK**? → [Build Result Bug Report](https://github.com/softpyscho/apkforge/issues/new?template=build.yml).
+Ideas belong in [Discussions](https://github.com/softpyscho/apkforge/discussions).
 
 ## ⚖️ License & Credits
 
-**Copyright (C) 2026 softpyscho** — licensed under the **GNU GPLv3**. You may modify and redistribute this software, but you must keep the original copyright notices intact. See [LICENSE](LICENSE) and [AUTHORS](AUTHORS).
+**Copyright (C) 2026 softpyscho**, licensed under the **GNU GPLv3**. You may modify and redistribute this software, but
+you must keep the original copyright notices intact. See [LICENSE](LICENSE) and [AUTHORS](AUTHORS).
 
 - 🔗 **Canonical source:** [github.com/softpyscho/apkforge](https://github.com/softpyscho/apkforge)
-- 💉 **Patches & CLI:** [MorpheApp](https://github.com/MorpheApp)
-- 🧱 **Foundation:** a complete Python rewrite inspired by [j-hc](https://github.com/j-hc)'s ReVanced build scripts.
-- 🎨 **Assets:** base icon designs by [kazimmt](https://github.com/kazimmt); see [icons/README.md](icons/README.md).
+- 💉 **Patches & CLI:** [MorpheApp](https://github.com/MorpheApp) and the patch authors listed in the
+  [app table](#-supported-applications)
+- 🧱 **Foundation:** a Python rewrite inspired by [j-hc](https://github.com/j-hc)'s ReVanced build scripts
+- 🎨 **Assets:** base icon designs by [kazimmt](https://github.com/kazimmt) — see [icons/README.md](icons/README.md)
 
 ## ⚠️ Disclaimer
 
-- This project is **not affiliated with any patch creators** and is intended for educational and personal use only.
-- All builds use **publicly available tools**; the repository merely automates the process.
-- Everything runs through **public GitHub Actions** for transparency. For maximum security, build the apps yourself from this source.
-- This repository only distributes pre-built APKs. If a build breaks due to upstream app or patch changes, please report it to the patch creators or wait for an update.
+- Not affiliated with any patch creator or app vendor. Intended for educational and personal use.
+- Builds use publicly available tools only; this repository automates the process and redistributes the result.
+- Everything runs in public GitHub Actions for transparency. For maximum trust, build the apps yourself from this source.
+- If a build breaks because an app or a patch changed upstream, report it to the patch authors or wait for an update.
 
 ---
 

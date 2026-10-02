@@ -34,7 +34,7 @@ src/scrapers/            # APKMirror, Uptodown, GitHub, Direct + shared base
 src/scripts/             # CI helpers: matrix, logs, readme, telegram, wa_version
 tests/                   # unittest suite
 docs/                    # ARCHITECTURE.md, ROADMAP.md
-.github/workflows/       # ci.yml (build), lint.yml (ruff + tests + README sync), cleanup.yml
+.github/workflows/       # ci.yml (update check), build.yml (reusable build+release), lint.yml (ruff + tests + README sync), cleanup.yml
 ```
 
 ## Conventions
