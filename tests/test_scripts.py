@@ -175,6 +175,39 @@ class CombineLogsTests(unittest.TestCase):
         self.assertIn("<s>`Hide ads`</s>", output)
 
 
+class PatchesLabelMicroGTests(unittest.TestCase):
+    class _Entry:
+        table = "Xodo"
+        app_name = "Xodo"
+        exclusive_patches = False
+
+        def __init__(self, microg: bool) -> None:
+            self.microg = microg
+            self.patcher_args: list[str] = []
+            self.patches = {"github:example/patches": {"version": "latest", "include": [], "exclude": []}}
+
+    def test_microg_is_not_listed_as_applied_when_not_opted_in(self) -> None:
+        # The builder disables it, so the README must not claim it is applied even when
+        # the bundle enables it by default.
+        cache = {"Xodo": ["Enable Pro", "GmsCore support (MicroG)"]}
+        label = readme._patches_label(self._Entry(microg=False), cache)
+        self.assertIn("Enable Pro", label)
+        self.assertNotIn("GmsCore", label)
+        self.assertIn("1 patch", label)
+
+    def test_microg_is_listed_when_opted_in(self) -> None:
+        cache = {"Xodo": ["Enable Pro", "GmsCore support (MicroG)"]}
+        label = readme._patches_label(self._Entry(microg=True), cache)
+        self.assertIn("GmsCore", label)
+        self.assertIn("2 patches", label)
+
+    def test_detection_matches_the_builder(self) -> None:
+        for name in ("MicroG integration", "GmsCore support (MicroG)", "gmscore support"):
+            self.assertTrue(readme._is_microg_patch(name), name)
+        for name in ("Enable Pro", "Hide ads", "Microsoft login"):
+            self.assertFalse(readme._is_microg_patch(name), name)
+
+
 class UpdateReadmeTests(unittest.TestCase):
     def test_only_the_first_marker_pair_is_replaced(self) -> None:
         # Regression: re.sub replaced every marker pair, so documenting the markers in

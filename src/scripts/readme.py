@@ -39,6 +39,13 @@ from src.core.config import (
 )
 from src.core.logger import force_utf8_stdio
 
+
+def _is_microg_patch(name: str) -> bool:
+    """Mirrors the builder's GmsCore/MicroG patch detection."""
+    lowered = name.lower()
+    return "gmscore" in lowered or "microg" in lowered
+
+
 _DEFAULT_BADGE_COLOR = "4500FF"
 _DEFAULT_BADGE_ICON = "android"
 
@@ -196,6 +203,11 @@ def _patches_label(entry, patches_cache: dict[str, list[str]], general_patches: 
     excluded = (excluded_cache or {}).get(entry.table) or (excluded_cache or {}).get(entry.app_name) or []
     if excluded:
         applied.difference_update(excluded)
+
+    # The builder disables the GmsCore/MicroG patch unless the app sets `microg = true`,
+    # even when the bundle enables it by default, so it must not be listed as applied.
+    if not getattr(entry, "microg", False):
+        applied.difference_update({p for p in applied if _is_microg_patch(p)})
 
     if has_cache or (entry.exclusive_patches and all_includes):
         sorted_patches = sorted(applied, key=lambda x: x.lower())

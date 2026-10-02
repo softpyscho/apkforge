@@ -281,6 +281,7 @@ A wildcard is a preference, not a hard requirement: if no source can supply a bu
 | `keep-filename` | For mirrors: keep the source filename (sanitized) | `false` | Per-app |
 | `badge-color` | Hex colour for the README badge | `""` | Per-app |
 | `badge-icon` | [simple-icons](https://simpleicons.org/) slug for the README badge | `""` | Per-app |
+| `microg` | Apply the bundle's GmsCore/MicroG patch, so the app signs in with Google via [MicroG](https://github.com/MorpheApp/MicroG-RE) instead of Play Services. Off means the patch is explicitly disabled, even if the bundle enables it by default | `false` | Per-app |
 | `exclusive-patches` | Apply only the patches listed under `[App.patches]` | `false` | Per-app |
 | `patcher-args` | Extra arguments passed straight to the Morphe CLI | `-` | Per-app |
 | `enabled` | Set to `false` to skip the entry | `true` | Per-app |
@@ -311,6 +312,21 @@ patcher-args = "-e 'Custom branding name for Reddit' -OappName='Reddit'"
 Every app has a one-click **Add to Obtainium** badge in the [app list](#-supported-applications). A complete import file is regenerated on every build as [`obtainium.json`](obtainium.json) — import it in Obtainium via *Add App → Import/Export → Import from file* to track every mirrored and patched app at once.
 
 ## ❓ FAQ & Troubleshooting
+
+<details>
+<summary><b>Why does a patched app ask me to install MicroG?</b></summary>
+
+It shouldn't, unless the app is set to. A GmsCore/MicroG patch rewires an app's Google Play Services
+calls to [MicroG](https://github.com/MorpheApp/MicroG-RE), which is what makes Google sign-in work in a
+re-signed APK — but it also makes the app **require** MicroG at runtime. It is only worth having for apps
+you actually sign into with a Google account.
+
+Until this was fixed the builder force-enabled any such patch it found in an app's bundle, so apps that
+never touch Google sign-in (Xodo, Amazon Prime Video) were built with `-e MicroG integration` and then
+demanded MicroG. It is now opt-in: set `microg = true` on an app in `config.toml` to apply the patch, and
+leave it out (the default) to have it explicitly disabled.
+
+</details>
 
 <details>
 <summary><b>Where did WhatsApp go? How do I keep it on a WaEnhancer-supported version?</b></summary>

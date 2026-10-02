@@ -138,6 +138,19 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 - **The WaEnhancer version sync skips disabled entries**, so CI no longer commits `config.toml`
   churn for apps that are not built (`src/scripts/wa_version.py`).
 
+- **The GmsCore/MicroG patch is no longer forced on every app.** `resolve_auto_patches()` picked any
+  patch whose name contained `gmscore` or `microg` out of the *full* `list-patches` output, and
+  `build_patch_args()` then appended `-e <that patch>` for every build. Confirmed from the run
+  logs: Xodo and Amazon Prime Video were patched with `-e MicroG integration` although neither
+  config asks for it, which makes the installed app demand MicroG at runtime. Because the patch is
+  not a *default* in that bundle it never appeared in `patches_info.json`, the README table or the
+  release notes, so it was invisible. It is now opt-in per app via a new `microg` key (default
+  `false`), and when off it is passed `-d` explicitly so a bundle that enables it by default cannot
+  reintroduce the dependency (`src/core/config.py`, `src/core/patcher.py`, `src/core/builder.py`).
+- **The "install MicroG-RE" line is only added to release notes when a built app opted in**
+  (`src/core/builder.py`), and the README no longer lists a MicroG patch as applied for an app that
+  did not opt in (`src/scripts/readme.py`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -146,8 +159,9 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   and hyphenated cached versions. Added `tests/test_scraper_parsing.py`, the first coverage of the
   scraper parsing layer (APKMirror variant selection, unspecific-version handling, GitHub
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
-  the mitigation-budget exhaustion and the patch-bundle collision.
-  Suite: 57 -> 104 tests.
+  the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
+  covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
+  Suite: 57 -> 117 tests.
 
 ### Docs
 

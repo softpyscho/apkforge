@@ -141,8 +141,14 @@ class PatcherCLI:
                 psu_patch = patch_name
         return microg_patch, psu_patch
 
-    def build_patch_args(self, patches: dict[str, dict], extra_args: list[str], arch: str, auto_patches: tuple[str, str], exclusive: bool = False, force: bool = False) -> list[str]:
-        active_auto = {p for p in auto_patches if p}
+    def build_patch_args(self, patches: dict[str, dict], extra_args: list[str], arch: str, auto_patches: tuple[str, str], exclusive: bool = False, force: bool = False, microg: bool = False) -> list[str]:
+        microg_patch, psu_patch = auto_patches
+        # "Disable Play Store updates" is applied automatically; a GmsCore/MicroG patch
+        # is not. Forcing it made the built APK demand MicroG at runtime even for apps
+        # that never sign in with Google, so it is opt-in per app via `microg = true`.
+        active_auto = {p for p in (psu_patch,) if p}
+        if microg and microg_patch:
+            active_auto.add(microg_patch)
         # Anything already disabled -- by config or by the retry loop after a patch
         # failed -- must not be re-enabled below, or the exclusion is a no-op and the
         # retry fails on the very same patch.
@@ -168,6 +174,16 @@ class PatcherCLI:
                 wpr(f"Not re-enabling '{auto_p}' automatically: it is disabled for this build")
                 continue
             p_args.extend(("-e", auto_p))
+
+        # Turn the patch off explicitly when the app did not opt in: some bundles ship it
+        # enabled by default, which would reintroduce the MicroG dependency silently.
+        if microg_patch and not microg:
+            requested = {p for spec in patches.values() for p in spec["include"]}
+            if microg_patch in requested:
+                wpr(f"'{microg_patch}' is listed under [patches].include; set 'microg = true' instead")
+            elif microg_patch not in disabled:
+                pr(f"Disabling '{microg_patch}': this app does not opt in to MicroG ('microg = true' to enable)")
+                p_args.extend(("-d", microg_patch))
         p_args.extend(("--striplibs", "arm64-v8a,armeabi-v7a" if arch == "all" else arch))
         return p_args
 

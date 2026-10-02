@@ -554,7 +554,7 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     for p in excluded_patches:
         dynamic_args.extend(["-d", p])
 
-    final_args = patcher.build_patch_args(patches=entry.patches, extra_args=dynamic_args, arch=arch, auto_patches=auto_patches, exclusive=entry.exclusive_patches, force=force)
+    final_args = patcher.build_patch_args(patches=entry.patches, extra_args=dynamic_args, arch=arch, auto_patches=auto_patches, exclusive=entry.exclusive_patches, force=force, microg=entry.microg)
     base_name = f"{entry.app_name.lower().replace(' ', '-')}-{entry.brand.lower().replace(' ', '-')}"
     apk_name = _sanitize_asset_name(f"{base_name}-v{version_f}-{arch_f}.apk")
 
@@ -725,7 +725,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
             github_asset_name = apk_output.name
             ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
             
-            return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": [], "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
+            return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": [], "microg": False, "success": True, "log": f"- 🟢 » {label}: {ver_str} (Mirrored)"}
 
         # Dynamic Exclude Loop (Max 5 retries to prevent endless loops)
         apk_output, excluded_patches, last_patch_exc = _patch_with_retries(entry, arch, version, force, patcher, list_patches, dl_result)
@@ -778,7 +778,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         ver_str = f"[`{version}`](https://github.com/{os.getenv('GITHUB_REPOSITORY')}/releases/download/{{TAG}}/{github_asset_name})" if IS_GITHUB else f"`{version}`"
         
         excluded_str = ", ".join(excluded_patches) if excluded_patches else ""
-        return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": excluded_patches, "success": True, "log": f"- 🟢 » {label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")}
+        return {"app": entry.table, "label": label, "version": version, "apk": apk_output.name, "source": dl_result.source_used, "excluded_patches": excluded_patches, "microg": entry.microg, "success": True, "log": f"- 🟢 » {label}: {ver_str}" + (f" <br> ⚠️ *(Excluded due to build errors: {excluded_str})*" if excluded_patches else "")}
     except (BuilderError, PatcherError, ScraperError, NetworkError) as exc:
         if not is_interrupted():
             epr(f"Building '{label}' failed! {exc}")
@@ -883,6 +883,7 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
 
     log_lines: list[str] = []
     built_keys: set[str] = set()
+    needs_microg = False
     report_data = {"success": [], "failed": [], "excluded_patches": {}}
     for fut in as_completed(futures):
         try:
@@ -892,6 +893,8 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
             continue
         if r:
             built_keys.update((r["app"], r["label"]))
+            if r.get("microg"):
+                needs_microg = True
             if r["success"]:
                 log_lines.append(r["log"])
                 report_data["success"].append({"app": r["app"], "label": r["label"], "version": r["version"], "apk": r["apk"], "source": r["source"]})
@@ -917,7 +920,8 @@ def run_build(entries: list[AppEntry], config: Config, net: NetworkManager) -> b
     for m in block_re.finditer(raw):
         (cli_blocks if m.group(1) == "CLI" else patch_blocks).append(m.group())
     changelogs = "".join(cli_blocks) + "".join(patch_blocks)
-    microg_line = "▶️ » Install [MicroG-RE](https://github.com/MorpheApp/MicroG-RE/releases) to enable Google account sign-in for supported apps\n"
+    # Only advertise MicroG when something in this run actually needs it.
+    microg_line = "▶️ » Install [MicroG-RE](https://github.com/MorpheApp/MicroG-RE/releases) to enable Google account sign-in for supported apps\n" if needs_microg else ""
     Path("build.md").write_text("\n".join([*log_lines, "", microg_line, changelogs]), encoding="utf-8")
     pr("Done")
     return True

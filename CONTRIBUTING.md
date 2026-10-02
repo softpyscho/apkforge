@@ -100,6 +100,7 @@ All configuration lives in [`config.toml`](config.toml). Top-level keys are defa
 | `keep-filename` | Mirrors: keep the source filename (sanitized for URLs) | `false` |
 | `badge-color` | Hex colour for the README badge | `""` |
 | `badge-icon` | simple-icons slug for the README badge | `""` |
+| `microg` | Apply the bundle's GmsCore/MicroG patch (needed for Google sign-in, makes the app require MicroG). Off disables it explicitly, even if the bundle defaults it on | `false` |
 | `exclusive-patches` | Apply only the patches listed in `[App.patches]` | `false` |
 | `patcher-args` | Extra arguments passed directly to the Morphe CLI | `-` |
 | `enabled` | Set to `false` to skip the entry | `true` |

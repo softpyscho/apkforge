@@ -47,6 +47,7 @@ class AppEntry:
     patcher_args: list[str]
     patches: dict[str, dict]
     exclusive_patches: bool
+    microg: bool
     cli_source: str
     cli_version: str
     enabled: bool
@@ -134,6 +135,7 @@ def parse_app_entries(data: dict[str, object], main: Config) -> list[AppEntry]:
             patcher_args=shlex.split(str(t.get("patcher-args", ""))),
             patches=patches,
             exclusive_patches=_parse_bool(t, "exclusive-patches", False),
+            microg=_parse_bool(t, "microg", False),
             cli_source=str(t.get("cli-source", main.cli_source)),
             cli_version=str(t.get("cli-version", main.cli_version)),
             enabled=_parse_bool(t, "enabled", True),
