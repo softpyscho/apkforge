@@ -175,6 +175,23 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   Instagram's equivalent tag does exist and was left in place. Re-add Greenify's once a stock APK is
   published under that tag (`config.toml`).
 
+- **A stale cached APK is no longer preferred over a version a source actually has.** On a download
+  failure `_build_single()` checked the cache *first*, and the `elif` holding the online fallback was
+  unreachable whenever any cached APK existed. Greenify resolved `5.1.1` (the newest its patches
+  support), APKMirror did not serve that exact version and Uptodown was Turnstile-blocked, so the
+  build dropped straight to a cached **4.7.5** — an outdated app, and the reason the "Unlock
+  Donation" patch (written against 5.x) failed and was excluded. The online fallback now runs first
+  and the cache is the last resort; it is also extracted into `_online_fallback()`, walks sources in
+  the same fixed order as a normal download (so a Turnstile-blocked source is no longer tried
+  first), and caps candidates per source (`src/core/builder.py`).
+- **APKMirror release versions are parsed properly.** The version was the last whitespace token of
+  the release title, so a trailing qualifier won: `Greenify 5.1.1 (nodpi)` was filed as `(nodpi)` and
+  `Greenify 5.1.1 build 51100` as `51100`, leaving the real version unfindable — the "Version not
+  found" in the Greenify, Prime Video and Alarmy jobs. The version is now matched by pattern, taking
+  the **last** match so an app name that looks like a version (`1.1.1.1 + WARP 6.38.9`) still
+  resolves to `6.38.9`. A release whose title has no version is skipped instead of being mis-keyed
+  (`src/scrapers/apkmirror.py`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -185,7 +202,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
   covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
-  Suite: 57 -> 120 tests.
+  Suite: 57 -> 130 tests.
 
 ### Docs
 

@@ -25,6 +25,7 @@ from pathlib import Path
 from src.core.config import (
     BUILD_DIR,
     ORIGINAL_APK_DIR,
+    SOURCES,
     TEMP_DIR,
     VALID_ARCHES,
     AppEntry,
@@ -475,6 +476,53 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     raise BuilderError("Stock APK not found")
 
 
+_MAX_FALLBACK_CANDIDATES = 5
+
+
+def _online_fallback(entry: AppEntry, version: str, arch: str, pkg_name: str, scrapers: dict[str, BaseScraper], failed_sources: set[str]) -> tuple[DownloadResult | None, str]:
+    """Best version a source actually offers when the resolved one cannot be fetched.
+
+    Sources are walked in the same fixed order as a normal download, so a reachable
+    source is tried before one that is usually behind a browser challenge. First the
+    highest versions *below* the target -- for a patched app the target is the newest
+    release its patches support, so a lower one is the newest still-patchable build --
+    then the highest version available at all.
+    """
+    fallback_order = [s for s in SOURCES if s in entry.dl_urls]
+
+    def _source_versions(src: str) -> list[str]:
+        try:
+            return scrapers[src].cached_metadata(entry.dl_urls[src]).versions
+        except Exception:
+            failed_sources.add(src)
+            return []
+
+    for src in fallback_order:
+        if src in failed_sources or not (versions := _source_versions(src)):
+            continue
+        for candidate in _get_versions_below(versions, version)[:_MAX_FALLBACK_CANDIDATES]:
+            wpr(f"Target '{version}' unavailable. Trying '{candidate}' from '{src}'...")
+            try:
+                return _download_apk(entry, candidate, arch, pkg_name, scrapers, src, failed_sources), candidate
+            except BuilderError:
+                continue
+
+    for src in fallback_order:
+        if src in failed_sources or not (versions := _source_versions(src)):
+            continue
+        try:
+            highest = highest_version(versions)
+        except ValueError:
+            continue
+        wpr(f"No lower version worked. Trying the highest available '{highest}' from '{src}'...")
+        try:
+            return _download_apk(entry, highest, arch, pkg_name, scrapers, src, failed_sources), highest
+        except BuilderError:
+            continue
+
+    return None, ""
+
+
 def _optimize_bundle(src_bundle: Path, dest_bundle: Path, target_arch: str) -> None:
     """
     Reads an .apkm or .xapk bundle and writes a new one stripping out all unused
@@ -627,68 +675,25 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
         try:
             dl_result = _download_apk(entry, version, arch, pkg_name, scrapers, dl_from, failed_sources, verify_wildcard=verify_wildcard)
         except BuilderError as exc:
-            cached_candidates = _cached_apk_versions(pkg_name)
+            # A newer version a source actually offers beats the local cache, which can be
+            # arbitrarily old. Patch bundles target recent releases, so handing the patcher
+            # a stale APK ships an outdated app *and* makes its patches fail.
+            dl_result_fallback, fallback_version = (None, "")
+            if entry.version in ("auto", "latest"):
+                dl_result_fallback, fallback_version = _online_fallback(entry, version, arch, pkg_name, scrapers, failed_sources)
 
-            if cached_candidates:
+            if dl_result_fallback:
+                version = fallback_version
+                force = True
+                if patcher:
+                    list_patches = patcher.list_patches(pkg_name, experimental=True)
+                dl_result = dl_result_fallback
+            elif cached_candidates := _cached_apk_versions(pkg_name):
                 fallback_ver = highest_version(cached_candidates)
-                wpr(f"Online download failed for '{entry.table}'. Reusing cached version '{fallback_ver}' from '{ORIGINAL_APK_DIR}'...")
+                wpr(f"No source could serve '{entry.table}'. Reusing cached version '{fallback_ver}' from '{ORIGINAL_APK_DIR}'...")
                 dl_result = _download_apk(entry, fallback_ver, arch, pkg_name, scrapers, dl_from, failed_sources)
                 version = clean_version(fallback_ver)
                 force = True
-            elif entry.version in ("auto", "latest"):
-                fallback_version = None
-                dl_result_fallback = None
-                fallback_order = [s for s in ["uptodown", "github", "apkmirror"] if s in entry.dl_urls]
-
-                for src in fallback_order:
-                    if src in failed_sources:
-                        continue
-                    try:
-                        versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
-                        if not versions:
-                            continue
-                        lower_candidates = _get_versions_below(versions, version)
-                        for candidate_ver in lower_candidates:
-                            wpr(f"Target '{version}' unavailable. Trying lower version '{candidate_ver}' from '{src}'...")
-                            try:
-                                dl_result_fallback = _download_apk(entry, candidate_ver, arch, pkg_name, scrapers, src, failed_sources)
-                                fallback_version = candidate_ver
-                                break
-                            except BuilderError:
-                                continue
-                        if dl_result_fallback:
-                            break
-                    except Exception:
-                        failed_sources.add(src)
-
-                if not dl_result_fallback:
-                    for src in fallback_order:
-                        if src in failed_sources:
-                            continue
-                        try:
-                            versions = scrapers[src].cached_metadata(entry.dl_urls[src]).versions
-                            if not versions:
-                                continue
-                            highest_ver = highest_version(versions)
-                            if highest_ver:
-                                wpr(f"No lower versions available. Falling back to highest available '{highest_ver}' from '{src}'...")
-                                try:
-                                    dl_result_fallback = _download_apk(entry, highest_ver, arch, pkg_name, scrapers, src, failed_sources)
-                                    fallback_version = highest_ver
-                                    break
-                                except BuilderError:
-                                    continue
-                        except Exception:
-                            failed_sources.add(src)
-
-                if fallback_version and dl_result_fallback:
-                    version = fallback_version
-                    force = True
-                    if patcher:
-                        list_patches = patcher.list_patches(pkg_name, experimental=True)
-                    dl_result = dl_result_fallback
-                else:
-                    raise exc
             else:
                 raise exc
 

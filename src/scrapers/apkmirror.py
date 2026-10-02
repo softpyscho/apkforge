@@ -29,6 +29,21 @@ _HOME = "https://www.apkmirror.com/"
 # site for these literals can never match a release.
 _UNSPECIFIC_VERSIONS: frozenset[str] = frozenset({"", "latest", "auto", "nightly", "dev"})
 
+# Release titles are "<App Name> <version>" but often carry a trailing qualifier, e.g.
+# "Greenify 5.1.1 (nodpi)" or "Greenify 5.1.1 build 51100". Taking the last whitespace
+# token captured the qualifier instead of the version, so the release was filed under a
+# key the builder never asks for and the version looked unavailable.
+_TITLE_VERSION = re.compile(r"(?<![\w.])(\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?)")
+
+
+def _version_from_title(title: str) -> str:
+    """The version in an APKMirror release title, or "" when there is none."""
+    # The last match, not the longest: an app name can itself look like a version
+    # ("1.1.1.1 + WARP 6.38.9"), and the release version always trails the name.
+    matches = _TITLE_VERSION.findall(title)
+    return matches[-1] if matches else ""
+
+
 class APKMirrorError(ScraperError):
     pass
 
@@ -60,7 +75,9 @@ class APKMirrorScraper(BaseScraper):
             text = a.get_text(strip=True)
             if "beta" in text.lower() or "alpha" in text.lower():
                 continue
-            v = text.split()[-1]
+            v = _version_from_title(text)
+            if not v:
+                continue
             self._release_urls[v] = urljoin("https://www.apkmirror.com", a["href"])
             versions.append(v)
         return AppMetadata(pkg_name=m.group(1), versions=versions)

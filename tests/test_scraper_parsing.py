@@ -10,7 +10,7 @@
 import json
 import unittest
 
-from src.scrapers.apkmirror import APKMirrorError, APKMirrorScraper
+from src.scrapers.apkmirror import APKMirrorError, APKMirrorScraper, _version_from_title
 from src.scrapers.base import _parse_html
 from src.scrapers.direct import DirectScraper, DirectScraperError
 from src.scrapers.github import GitHubScraper
@@ -54,6 +54,51 @@ class APKMirrorVariantTests(unittest.TestCase):
 
     def test_category_is_derived_from_the_url(self) -> None:
         self.assertEqual(APKMirrorScraper._category_of("https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"), "whatsapp")
+
+
+class APKMirrorTitleVersionTests(unittest.TestCase):
+    """Regression: the version was the last whitespace token of the release title.
+
+    A trailing qualifier ("Greenify 5.1.1 (nodpi)", "... build 51100") was filed as the
+    version, so the release was keyed under something the builder never asks for and the
+    version looked unavailable -- the "Version not found" in the Greenify, Prime Video
+    and Alarmy jobs.
+    """
+
+    def test_plain_title(self) -> None:
+        self.assertEqual(_version_from_title("Greenify 5.1.1"), "5.1.1")
+
+    def test_trailing_qualifier_is_ignored(self) -> None:
+        self.assertEqual(_version_from_title("Greenify 5.1.1 (nodpi)"), "5.1.1")
+        self.assertEqual(_version_from_title("Greenify 5.1.1 build 51100"), "5.1.1")
+
+    def test_an_app_name_that_looks_like_a_version(self) -> None:
+        # The last match, not the longest: "1.1.1.1" is the app's name.
+        self.assertEqual(_version_from_title("1.1.1.1 + WARP: Safer Internet 6.38.9"), "6.38.9")
+
+    def test_long_and_suffixed_versions(self) -> None:
+        self.assertEqual(_version_from_title("Amazon Prime Video 3.0.470.1047"), "3.0.470.1047")
+        self.assertEqual(_version_from_title("Mixplorer 6.71.15-API29"), "6.71.15-API29")
+
+    def test_no_version_yields_empty(self) -> None:
+        self.assertEqual(_version_from_title("Some App"), "")
+
+    def test_unparsable_release_is_skipped_not_mis_keyed(self) -> None:
+        html = """
+        <div id="primary">
+          <a class="fontBlack" href="/apk/o/greenify/greenify-5-1-1-release/">Greenify 5.1.1 (nodpi)</a>
+          <a class="fontBlack" href="/apk/o/greenify/greenify-beta-release/">Greenify 5.2.0 beta 1</a>
+          <a class="fontBlack" href="/apk/o/greenify/no-version-release/">Greenify</a>
+        </div>
+        """
+        scraper = object.__new__(APKMirrorScraper)
+        scraper._cache, scraper._release_urls, scraper._category = {}, {}, "greenify"
+        pages = iter(['<a href="https://play.google.com/store/apps/details?id=com.oasisfeng.greenify">x</a>', html])
+        scraper.net = type("N", (), {"get": staticmethod(lambda u, headers=None: next(pages))})()
+        meta = scraper.fetch_metadata("https://www.apkmirror.com/apk/oasisfeng/greenify")
+        self.assertEqual(meta.pkg_name, "com.oasisfeng.greenify")
+        self.assertEqual(meta.versions, ["5.1.1"], "beta skipped, version-less release skipped")
+        self.assertIn("5.1.1", scraper._release_urls)
 
 
 class APKMirrorUnspecificVersionTests(unittest.TestCase):

@@ -351,6 +351,89 @@ class CachedDownloadValidationTests(unittest.TestCase):
             self.assertGreater(result.path.stat().st_size, 100_000)
 
 
+class OnlineFallbackTests(unittest.TestCase):
+    """Regression: a stale cache was preferred over a version a source actually has.
+
+    Greenify resolved 5.1.1 (the newest its patches support), APKMirror did not carry
+    that exact version and Uptodown's download was Turnstile-blocked, so the build fell
+    straight back to a cached 4.7.5 — shipping an outdated app and making the
+    "Unlock Donation" patch, written against 5.x, fail.
+    """
+
+    class _Entry:
+        table = "Greenify"
+        dpi = ""
+        mirror = False
+        app_name = "Greenify"
+
+        def __init__(self) -> None:
+            self.version = "auto"
+            self.dl_urls = {"apkmirror": "a", "uptodown": "u"}
+
+    class _Source:
+        """Offers `versions`, but only serves the ones in `downloadable`."""
+
+        def __init__(self, versions, downloadable) -> None:
+            self.versions, self.downloadable = versions, set(downloadable)
+            self.asked: list[str] = []
+
+        def cached_metadata(self, url):
+            return AppMetadata(pkg_name="com.oasisfeng.greenify", versions=list(self.versions))
+
+        def download(self, url, version, dest, arch, dpi):
+            self.asked.append(version)
+            if version not in self.downloadable:
+                raise builder.ScraperError("Version not found")
+            dest.write_bytes(b"PK\x03\x04" + b"0" * 200_000)
+            return builder.DownloadResult(path=dest, is_bundle=False)
+
+    def _run(self, cached: list[str]):
+        apkmirror = self._Source(["4.7.5", "5.0.9", "5.1.0", "5.1.1"], downloadable={"5.1.0", "5.0.9", "4.7.5"})
+        uptodown = self._Source(["5.1.1"], downloadable=set())
+        scrapers = {"apkmirror": apkmirror, "uptodown": uptodown}
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            for v in cached:
+                (cache / f"com.oasisfeng.greenify-v{v}-arm64-v8a.apk").write_bytes(b"PK\x03\x04" + b"0" * 200_000)
+            with mock.patch.object(builder, "ORIGINAL_APK_DIR", cache):
+                result, version = builder._online_fallback(
+                    self._Entry(), "5.1.1", "arm64-v8a", "com.oasisfeng.greenify", scrapers, set(),  # type: ignore[arg-type]
+                )
+                return result, version, apkmirror.asked
+
+    def test_newest_downloadable_version_wins_over_a_stale_cache(self) -> None:
+        result, version, asked = self._run(cached=["4.7.5"])
+        self.assertIsNotNone(result)
+        self.assertEqual(version, "5.1.0", "should take the newest version the source can actually serve")
+        self.assertEqual(asked[0], "5.1.0", "candidates must be tried highest-first")
+        self.assertNotIn("4.7.5", asked[:1])
+
+    def test_reachable_sources_are_tried_before_challenged_ones(self) -> None:
+        # SOURCES order puts apkmirror ahead of uptodown, so the Turnstile-blocked
+        # source is not burned through first.
+        _, _, asked = self._run(cached=[])
+        self.assertTrue(asked, "apkmirror should have been asked")
+
+    def test_candidates_are_capped(self) -> None:
+        src = self._Source([f"1.0.{n}" for n in range(40)], downloadable=set())
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            entry = self._Entry()
+            entry.dl_urls = {"apkmirror": "a"}
+            result, _ = builder._online_fallback(entry, "9.9.9", "arm64-v8a", "pkg", {"apkmirror": src}, set())  # type: ignore[arg-type]
+        self.assertIsNone(result)
+        # five capped candidates plus the single "highest available" retry
+        self.assertLessEqual(len(src.asked), builder._MAX_FALLBACK_CANDIDATES + 1)
+
+    def test_no_usable_source_returns_nothing_so_the_cache_can_be_used(self) -> None:
+        dead = self._Source([], downloadable=set())
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            entry = self._Entry()
+            entry.dl_urls = {"apkmirror": "a"}
+            result, version = builder._online_fallback(entry, "5.1.1", "arm64-v8a", "pkg", {"apkmirror": dead}, set())  # type: ignore[arg-type]
+        self.assertIsNone(result)
+        self.assertEqual(version, "")
+
+
 class RenameCachedStockTests(unittest.TestCase):
     def _cache(self, tmp: Path, name: str) -> builder.DownloadResult:
         (tmp / name).write_bytes(b"PK\x03\x04")
