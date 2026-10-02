@@ -6,6 +6,7 @@
 # ---------------------------------------------------------
 
 import os
+import pathlib
 import unittest
 from unittest import mock
 
@@ -127,6 +128,50 @@ class MitigationBudgetTests(unittest.TestCase):
         ):
             net.get("https://www.apkmirror.com/apk/x/y")
         self.assertLess(len(session.requests), 20, "mitigation retries must stay bounded")
+
+
+class AnnotationLevelTests(unittest.TestCase):
+    """Recovery and retry messages must not raise GitHub ::error:: annotations.
+
+    Regression: a single run produced 53 "errors" in the Actions annotations panel,
+    almost all of them successful mitigations ("Warmed up cookies...", "Rotated
+    impersonation...") logged through epr(), which drowned the real failures.
+    """
+
+    def test_network_module_raises_no_error_annotations(self) -> None:
+        source = pathlib.Path(network.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("epr(", source, "network.py failures all fail over to another source; use wpr()/pr()")
+
+    def test_mitigations_are_logged_at_non_error_levels(self) -> None:
+        # epr is not even imported into network.py any more, so an error annotation is
+        # impossible from there; assert the mitigation path really does log, at the
+        # levels that do not create one.
+        net, session = MitigationBudgetTests()._manager()
+        plain: list[str] = []
+        warned: list[str] = []
+        with (
+            mock.patch.object(network, "pr", lambda m: plain.append(m)),
+            mock.patch.object(network, "wpr", lambda m: warned.append(m)),
+            mock.patch.object(network, "_retry_sleep", lambda *a, **k: None),
+            mock.patch.object(network.time, "sleep", lambda *a: None),
+            mock.patch.object(net, "_build_session", return_value=session),
+            self.assertRaises(network.NetworkError),
+        ):
+            net.get("https://www.apkmirror.com/apk/x/y")
+
+        self.assertTrue(any("Warmed up cookies" in m for m in plain), plain)
+        self.assertTrue(any("Rotated impersonation" in m for m in plain), plain)
+        self.assertTrue(any("Exhausted every bot-challenge mitigation" in m for m in warned), warned)
+
+    def test_builder_keeps_errors_for_real_failures(self) -> None:
+        from src.core import builder
+        source = pathlib.Path(builder.__file__).read_text(encoding="utf-8")
+        # A build that actually failed must still be an error.
+        self.assertIn('epr(f"Building \'{label}\' failed!', source)
+        self.assertIn('epr("All builds failed")', source)
+        # Per-source failures fail over, so they must not be.
+        self.assertNotIn('epr(f"Could not find', source)
+        self.assertNotIn('epr(f"Failed to fetch', source)
 
 
 class PrimeClaimTests(unittest.TestCase):

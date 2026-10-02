@@ -143,7 +143,7 @@ def _matches_wildcard(apk_path: Path, wildcard: str) -> bool:
     """
     axml = _read_manifest_axml(apk_path)
     if not axml:
-        epr(f"Could not read the manifest of {apk_path.name}; accepting it for wildcard '{wildcard}' without verification")
+        wpr(f"Could not read the manifest of {apk_path.name}; accepting it for wildcard '{wildcard}' without verification")
         return True
     prefix = wildcard[:-3] + "."
     return any(s.strip().startswith(prefix) for s in parse_axml_strings(axml))
@@ -267,7 +267,7 @@ def _find_pkg_name(entry: AppEntry, scrapers: dict[str, BaseScraper]) -> tuple[s
         try:
             metadata = scrapers[src].cached_metadata(url)
         except (NetworkError, ScraperError) as exc:
-            epr(f"Could not find '{entry.table}' in '{src}': {exc}")
+            wpr(f"Could not find '{entry.table}' in '{src}': {exc}")
             failed.add(src)
             continue
 
@@ -457,7 +457,7 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
                 res.path.with_suffix(".src").write_text(src, encoding="utf-8")
                 return DownloadResult(path=res.path, is_bundle=res.is_bundle, original_name=res.original_name, source_used=src)
             except (NetworkError, ScraperError, BuilderError) as exc:
-                epr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
+                wpr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
         return None
 
     enforce = verify_wildcard and entry.version.endswith(".xx")
@@ -766,7 +766,7 @@ def _build_single(entry: AppEntry, arch: str, label: str, net: NetworkManager, p
                     apk_output, excluded_patches, last_patch_exc = _patch_with_retries(entry, arch, version, force, patcher, list_patches, dl_result)
                     patch_success = apk_output is not None
                 except Exception as fb_exc:
-                    epr(f"Fallback attempt on version '{fallback_ver}' failed: {fb_exc}")
+                    wpr(f"Fallback attempt on version '{fallback_ver}' failed: {fb_exc}")
 
         if not patch_success:
             raise BuilderError(f"Failed to patch '{label}': {last_patch_exc}")

@@ -151,6 +151,29 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   (`src/core/builder.py`), and the README no longer lists a MicroG patch as applied for an app that
   did not opt in (`src/scripts/readme.py`).
 
+- **Recovery and retry messages no longer raise GitHub error annotations.** `epr()` emits
+  `::error::`, and it was used for every per-source failure and every successful mitigation, so one
+  run reported **53 "errors"** in the Actions panel — most of them "Warmed up cookies…" and
+  "Rotated impersonation…", i.e. the recovery working as designed. `network.py` no longer imports
+  `epr` at all (retries and challenge handling are `wpr`/`pr`), and in `builder.py` the four
+  per-source messages that fail over to another source became warnings. A build that actually
+  failed, a missing CLI or patch bundle, and a config mistake stay errors. Replaying the Bitget
+  challenge storm now yields 0 errors and 1 warning instead of 8 errors
+  (`src/core/network.py`, `src/core/builder.py`).
+
+### CI
+
+- **`actions/cache` bumped to v5.1.0** (`caa2961`). v4.3.0 targets Node 20, which GitHub now
+  force-runs on Node 24 and warns about on every job.
+- **"Cache save failed" is gone.** A cache key is immutable, so when the stock APK had not changed
+  `hashFiles()` produced a key that already existed and the save step failed on most jobs. The save
+  is now skipped when the restored cache already carries that exact key, via the restore step's
+  `cache-matched-key` output (`.github/workflows/build.yml`).
+- **Greenify's `github-dlurl` removed.** It pointed at `releases/tag/com.oasisfeng.greenify` in this
+  repository, which returns **HTTP 404** — verified against the API — so it failed on every run.
+  Instagram's equivalent tag does exist and was left in place. Re-add Greenify's once a stock APK is
+  published under that tag (`config.toml`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -161,7 +184,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
   covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
-  Suite: 57 -> 117 tests.
+  Suite: 57 -> 120 tests.
 
 ### Docs
 

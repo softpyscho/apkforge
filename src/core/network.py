@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 from curl_cffi import requests
 from curl_cffi.requests import exceptions as req_exc
 
-from src.core.logger import epr
+from src.core.logger import pr, wpr
 
 # Impersonation targets are tried in order; on a bot challenge the next one is used.
 # curl_cffi applies a matching TLS fingerprint and User-Agent for each target, so the
@@ -174,7 +174,7 @@ def _handle_status(resp, url: str, attempt: int) -> bool:
         raise ResourceNotFoundError(f"Not found ({resp.status_code}): {url}")
 
     if resp.status_code in (403, 429) or resp.status_code >= 500:
-        epr(f"HTTP {resp.status_code} for {url}, attempt {attempt}/{_MAX_ATTEMPTS}")
+        wpr(f"HTTP {resp.status_code} for {url}, attempt {attempt}/{_MAX_ATTEMPTS}")
         return True
 
     if resp.status_code >= 400:
@@ -199,14 +199,14 @@ class NetworkManager:
         self._primed_mu = threading.Lock()
         self._rotations_made = 0
         if self._proxies:
-            epr("Using proxy from environment for all requests")
+            pr("Using proxy from environment for all requests")
 
     def _build_session(self):
         target = self._impersonations[self._imp_index]
         try:
             return requests.Session(impersonate=target, proxies=self._proxies)
         except Exception as exc:
-            epr(f"Impersonation '{target}' unavailable ({exc}); falling back to default TLS")
+            wpr(f"Impersonation '{target}' unavailable ({exc}); falling back to default TLS")
             return requests.Session(proxies=self._proxies)
 
     def _rotate_impersonation(self) -> bool:
@@ -271,7 +271,7 @@ class NetworkManager:
             with self._rw.read():
                 self.session.get(root, timeout=(5, 10), allow_redirects=True, headers=self._browser_headers(root, None, False), verify=True)
         except Exception as exc:
-            epr(f"Warm-up request for {parsed.netloc} failed: {exc}")
+            wpr(f"Warm-up request for {parsed.netloc} failed: {exc}")
 
     def _apply_flaresolverr(self, solution: dict) -> None:
         with self._rw.read():
@@ -303,10 +303,10 @@ class NetworkManager:
             resp = requests.post(f"{fs_url.rstrip('/')}/v1", json=payload, timeout=(5, 75))
             data = resp.json()
         except Exception as exc:
-            epr(f"FlareSolverr request failed: {exc}")
+            wpr(f"FlareSolverr request failed: {exc}")
             return None
         if data.get("status") != "ok":
-            epr(f"FlareSolverr could not solve {url}: {data.get('message', data.get('status'))}")
+            wpr(f"FlareSolverr could not solve {url}: {data.get('message', data.get('status'))}")
             return None
         solution = data.get("solution") or {}
         self._apply_flaresolverr(solution)
@@ -319,10 +319,10 @@ class NetworkManager:
         if self._should_prime(netloc) and self._claim_prime(netloc):
             with _get_lock(self._domain_locks, self._domain_mu, netloc):
                 self._prime_domain_locked(url)
-            epr(f"Warmed up cookies for {netloc} after a bot challenge")
+            pr(f"Warmed up cookies for {netloc} after a bot challenge")
             return True
         if self._rotate_impersonation():
-            epr(f"Rotated impersonation to '{self.impersonate}' after a bot challenge")
+            pr(f"Rotated impersonation to '{self.impersonate}' after a bot challenge")
             return True
         return False
 
@@ -386,14 +386,14 @@ class NetworkManager:
                     if solved_html == "":
                         mitigations += 1
                         if mitigations > self._max_mitigations():
-                            epr(f"Exhausted every bot-challenge mitigation for {url}")
+                            wpr(f"Exhausted every bot-challenge mitigation for {url}")
                             break
                         # The mitigation, not the server, is what changed: retry without
                         # spending an attempt so the rotation can work through its list.
                         attempt -= 1
                         _retry_sleep(mitigations)
                         continue
-                    epr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
+                    wpr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
                     break
 
                 if _handle_status(resp, url, attempt):
@@ -403,7 +403,7 @@ class NetworkManager:
                 return resp.text
             except req_exc.RequestException as exc:
                 last_exc = exc
-                epr(f"Request error for {url}, attempt {attempt}/{_MAX_ATTEMPTS}: {exc}")
+                wpr(f"Request error for {url}, attempt {attempt}/{_MAX_ATTEMPTS}: {exc}")
                 _retry_sleep(attempt)
         raise NetworkError(f"Request failed after {_MAX_ATTEMPTS} attempts: {url}") from last_exc
 
@@ -460,11 +460,11 @@ class NetworkManager:
                         # `returnOnlyCookies` to avoid pulling the binary through the solver.
                         solved = self._attempt_mitigation(url, netloc, managed, want_html=False)
                         if solved is None:
-                            epr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
+                            wpr(f"Bot challenge for {url} could not be bypassed. Configure APKFORGE_PROXY or FLARESOLVERR_URL to get past it")
                             break
                         mitigations += 1
                         if mitigations > self._max_mitigations():
-                            epr(f"Exhausted every bot-challenge mitigation for {url}")
+                            wpr(f"Exhausted every bot-challenge mitigation for {url}")
                             break
                         attempt -= 1
                         _retry_sleep(mitigations)
@@ -474,7 +474,7 @@ class NetworkManager:
                 except req_exc.RequestException as exc:
                     tmp.unlink(missing_ok=True)
                     last_exc = exc
-                    epr(f"Download error for {url}, attempt {attempt}/{_MAX_ATTEMPTS}: {exc}")
+                    wpr(f"Download error for {url}, attempt {attempt}/{_MAX_ATTEMPTS}: {exc}")
                     _retry_sleep(attempt)
             tmp.unlink(missing_ok=True)
             raise NetworkError(f"Download failed after {_MAX_ATTEMPTS} attempts: {url}") from last_exc

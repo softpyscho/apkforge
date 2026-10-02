@@ -396,6 +396,10 @@ Releases sources need neither.
 Release tags are dates (`YY.MM.DD`). Each app/arch builds in its own job with `fail-fast: false`, so one unreachable
 source cannot stop the rest, and the release still publishes. Stock APKs are cached per app between runs.
 
+Reading the annotations panel: a failing-over source, a retry and a bot-challenge mitigation are logged as plain output
+or a warning. An **error** annotation means a build genuinely failed, a CLI or patch bundle could not be fetched, or
+`config.toml` is wrong.
+
 Optional repository settings: secrets `KEYSTORE_BASE64`, `KEYSTORE_PASS`, `KEYSTORE_ALIAS`, `APKFORGE_PROXY`,
 `TG_TOKEN`, `TG_CHAT`; variable `USE_FLARESOLVERR`.
 
