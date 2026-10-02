@@ -106,6 +106,35 @@ class MicroGOptInTests(unittest.TestCase):
         self.assertEqual(args[-2:], ["--striplibs", "arm64-v8a"])
 
 
+class SigningWarningTests(unittest.TestCase):
+    """Regression: CI built every APK with a different throwaway key and said nothing, so
+    an installed Xodo could not be updated ("signature changed")."""
+
+    def _patch(self, env: dict[str, str], ks_path: Path | None) -> list[str]:
+        warned: list[str] = []
+        patcher_module._warned_signing = False
+        cli = PatcherCLI(Path("cli.jar"), {}, ks_path=ks_path)
+        with (
+            mock.patch.dict("os.environ", env, clear=True),
+            mock.patch.object(patcher_module, "wpr", warned.append),
+            mock.patch.object(patcher_module, "pr", lambda m: None),
+            mock.patch.object(patcher_module, "_run_java_streaming", return_value=""),
+            mock.patch.object(patcher_module.Path, "exists", return_value=False),
+        ):
+            cli.patch(Path("in.apk"), Path("out.apk"), [])
+            cli.patch(Path("in.apk"), Path("out.apk"), [])
+        return warned
+
+    def test_no_keystore_warns_once(self) -> None:
+        warned = self._patch({}, None)
+        self.assertEqual(len(warned), 1)
+        self.assertIn("KEYSTORE_BASE64", warned[0])
+
+    def test_a_configured_keystore_does_not_warn(self) -> None:
+        env = {"KEYSTORE_PASS": "p", "KEYSTORE_ALIAS": "a"}
+        self.assertEqual(self._patch(env, Path("temp/x.keystore")), [])
+
+
 class JvmBannerTests(unittest.TestCase):
     def test_banner_is_not_parsed_as_data(self) -> None:
         # Regression: "Picked up JAVA_TOOL_OPTIONS: ..." on stderr became the resolved

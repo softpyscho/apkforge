@@ -108,6 +108,20 @@ def applied_patch_count(cli_output: str) -> int | None:
     return int(matches[-1])
 
 
+_warned_signing = False
+
+
+def _warn_throwaway_signing() -> None:
+    """Say once per run that updates will not install over the previous build."""
+    global _warned_signing
+    if _warned_signing:
+        return
+    _warned_signing = True
+    wpr("No signing keystore configured: the Morphe CLI signs with a throwaway key that differs on every run, "
+        "so this build cannot be installed as an update over a previous one. Set KEYSTORE_BASE64, KEYSTORE_PASS and "
+        "KEYSTORE_ALIAS (see README -> Signing)")
+
+
 def _redact_args(args: list[str | Path]) -> list[str]:
     return [_SECRET_PATTERNS.sub(r"\1***", str(a)) for a in args]
 
@@ -213,6 +227,9 @@ class PatcherCLI:
             ks_args = [f"--keystore={self.ks_path}", f"--keystore-entry-password={ks_pass}", f"--keystore-password={ks_pass}", f"--signer={ks_alias}", f"--keystore-entry-alias={ks_alias}"]
         elif Path("morphe.keystore").exists():
             ks_args = ["--keystore=morphe.keystore"]
+
+        if not ks_args:
+            _warn_throwaway_signing()
 
         pr(" ".join(_redact_args(["java", *base_cmd, *ks_args, *patch_args])))
         try:

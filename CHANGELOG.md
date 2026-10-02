@@ -219,6 +219,12 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   into the parsed CLI output and became the resolved version, breaking a build. Anyone with
   `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` or `JDK_JAVA_OPTIONS` set could hit it (`src/core/patcher.py`).
 
+- **A build with no signing keystore now says so.** CI had `KEYSTORE_BASE64` / `KEYSTORE_PASS` /
+  `KEYSTORE_ALIAS` all empty, so the Morphe CLI signed every APK with a throwaway key generated on the
+  fresh runner — a different key per run — and nothing warned. Result: an installed Xodo 11.0.0
+  (signature `e4b1…`) could not be updated to 11.2.0 (`1bce…`). A `::warning::` is now emitted once per
+  run (`src/core/patcher.py`). The fix itself is configuration: set the three secrets (README → Signing).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -229,7 +235,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
   covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
-  Suite: 57 -> 149 tests.
+  Suite: 57 -> 151 tests.
 
 ### Docs
 

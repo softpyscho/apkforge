@@ -463,6 +463,27 @@ explicitly, even when the patch bundle enables it by default.
 </details>
 
 <details>
+<summary><b>"Signature changed" — the app can't be updated.</b></summary>
+
+Both signatures in that dialog can be labelled "Morphe" and still be different keys. If the repository has no
+`KEYSTORE_*` secrets, every CI run signs with a fresh throwaway key, so no two releases are update-compatible. The build
+log shows a `No signing keystore configured` warning when this is happening.
+
+Fix once, permanently — generate a keystore **on your own machine** (the private key should never be pasted anywhere):
+
+```bash
+keytool -genkeypair -v -keystore apkforge.keystore -alias apkforge -keyalg RSA -keysize 4096 -validity 36500
+base64 -w 0 apkforge.keystore        # macOS: base64 -i apkforge.keystore
+```
+
+Then add three **Secrets** (Settings → Secrets and variables → Actions → *Secrets*): `KEYSTORE_BASE64` (the base64
+output), `KEYSTORE_PASS` (the password you chose — use the same for the key), and `KEYSTORE_ALIAS` (`apkforge`). Keep a
+backup of the keystore: losing it means losing updates again. Apps installed from earlier builds must be uninstalled once;
+every build signed with this key then updates in place.
+
+</details>
+
+<details>
 <summary><b>An app failed to install, or stopped updating.</b></summary>
 
 The signature changed. Uninstall the previous build — backing up its data first if you need it — and reinstall. To keep
