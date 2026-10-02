@@ -33,10 +33,16 @@ from src.core.config import (
 )
 from src.core.logger import IS_GITHUB, epr, is_interrupted, pr, wpr
 from src.core.network import NetworkError, NetworkManager
-from src.core.patcher import PatcherCLI, PatcherError
+from src.core.patcher import PatcherCLI, PatcherError, applied_patch_count
 from src.core.prebuilts import fetch_cli, fetch_mpp
 from src.core.versions import clean_version, highest_version, parse_version
-from src.scrapers.base import BaseScraper, DownloadResult, ScraperError, make_scraper
+from src.scrapers.base import (
+    BaseScraper,
+    DownloadResult,
+    ScraperError,
+    SourceBlockedError,
+    make_scraper,
+)
 
 _patches_info: dict[str, list[str]] = {}
 if Path("patches_info.json").exists():
@@ -443,8 +449,12 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
     if not ordered_sources:
         ordered_sources = [dl_from] + [s for s in entry.dl_urls if s != dl_from]
 
+    blocked: set[str] = set()
+
     def _try_sources(enforce_wildcard: bool) -> DownloadResult | None:
         for src in ordered_sources:
+            if src in blocked:
+                continue
             url = entry.dl_urls[src]
             pr(f"Downloading '{entry.table}' from '{src}'")
             try:
@@ -458,7 +468,11 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
                 res.path.with_suffix(".src").write_text(src, encoding="utf-8")
                 return DownloadResult(path=res.path, is_bundle=res.is_bundle, original_name=res.original_name, source_used=src)
             except (NetworkError, ScraperError, BuilderError) as exc:
-                wpr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}")
+                wpr(f"Failed to fetch '{entry.table}' from '{src}' (version='{version}', arch='{arch}'): {exc}{_offers_hint(scrapers[src], url)}")
+                if isinstance(exc, SourceBlockedError):
+                    # It refuses every version the same way; never ask it again this build.
+                    blocked.add(src)
+                    failed_sources.add(src)
         return None
 
     enforce = verify_wildcard and entry.version.endswith(".xx")
@@ -474,6 +488,20 @@ def _download_apk(entry: AppEntry, version: str, arch: str, pkg_name: str, scrap
             return result
 
     raise BuilderError("Stock APK not found")
+
+
+def _offers_hint(scraper: BaseScraper, url: str) -> str:
+    """What a source lists, for a failure message: tells "does not have it" from "blocked".
+
+    Runs inside an ``except`` handler, so it must never raise: a diagnostic that fails
+    would replace the real download error with its own.
+    """
+    try:
+        if not (versions := scraper.known_versions(url)):
+            return ""
+        return f" [lists {len(versions)} version(s), newest '{highest_version(versions)}']"
+    except Exception:
+        return ""
 
 
 _MAX_FALLBACK_CANDIDATES = 5
@@ -497,10 +525,15 @@ def _online_fallback(entry: AppEntry, version: str, arch: str, pkg_name: str, sc
             failed_sources.add(src)
             return []
 
+    tried: set[str] = {version}
+
     for src in fallback_order:
         if src in failed_sources or not (versions := _source_versions(src)):
             continue
         for candidate in _get_versions_below(versions, version)[:_MAX_FALLBACK_CANDIDATES]:
+            if src in failed_sources:
+                break
+            tried.add(candidate)
             wpr(f"Target '{version}' unavailable. Trying '{candidate}' from '{src}'...")
             try:
                 return _download_apk(entry, candidate, arch, pkg_name, scrapers, src, failed_sources), candidate
@@ -513,6 +546,8 @@ def _online_fallback(entry: AppEntry, version: str, arch: str, pkg_name: str, sc
         try:
             highest = highest_version(versions)
         except ValueError:
+            continue
+        if highest in tried:
             continue
         wpr(f"No lower version worked. Trying the highest available '{highest}' from '{src}'...")
         try:
@@ -611,7 +646,15 @@ def _apply_patch(entry: AppEntry, arch: str, version: str, force: bool, patcher:
     work_dir = Path(tempfile.mkdtemp(prefix="patch-", dir=TEMP_DIR))
     try:
         patched_apk = work_dir / apk_name
-        patcher.patch(dl_result.path, patched_apk, final_args)
+        cli_output = patcher.patch(dl_result.path, patched_apk, final_args)
+
+        # The CLI exits 0 even when every patch was excluded and it "applied 0 patches",
+        # producing a re-signed stock APK. Publishing that as a patched build is a lie, and
+        # it is what the retry loop converges on when the APK is a version the bundle does
+        # not support: each patch fails to match, is excluded, and nothing is left.
+        if applied_patch_count(cli_output) == 0:
+            excluded = f" (excluded after failing: {', '.join(excluded_patches)})" if excluded_patches else ""
+            raise BuilderError(f"No patches could be applied to '{entry.table}' v{version}{excluded}; the patch bundle most likely does not support this version")
 
         if not patched_apk.exists():
             # The patcher may use a slightly different filename (e.g. with version codes)

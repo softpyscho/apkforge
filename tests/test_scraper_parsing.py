@@ -11,9 +11,10 @@ import json
 import unittest
 
 from src.scrapers.apkmirror import APKMirrorError, APKMirrorScraper, _version_from_title
-from src.scrapers.base import _parse_html
+from src.scrapers.base import SourceBlockedError, _parse_html
 from src.scrapers.direct import DirectScraper, DirectScraperError
 from src.scrapers.github import GitHubScraper
+from src.scrapers.uptodown import UptodownBlockedError, UptodownError, UptodownScraper
 
 _VARIANT_ROWS = """
 <div id="primary">
@@ -152,6 +153,58 @@ class APKMirrorUnspecificVersionTests(unittest.TestCase):
             scraper.download("https://www.apkmirror.com/apk/whatsapp-inc/whatsapp-business/", "2.26.37.74",
                              Path(tmp) / "x.apk", "arm64-v8a", "")
         self.assertTrue(any("?s=2.26.37.74" in u for u in scraper.requested))
+
+
+class UptodownGateTests(unittest.TestCase):
+    """The Turnstile gate is only reachable after the version was found in the listing, so
+    it proves the source *has* the version. It must be told apart from a plain miss.
+    """
+
+    _VERSIONS_PAGE = '<div id="detail-app-name" data-code="42"></div>'
+
+    def _scraper(self, listing_versions: list[str], version_page: str):
+        scraper = object.__new__(UptodownScraper)
+        scraper._cache = {}
+        scraper._versions_cache = {"https://app.en.uptodown.com/android": self._VERSIONS_PAGE}
+        entries = [
+            {"version": v, "kindFile": "apk", "versionURL": {"url": "https://app.en.uptodown.com/android", "extraURL": "download", "versionID": str(n)}}
+            for n, v in enumerate(listing_versions)
+        ]
+
+        def _get(url, headers=None):
+            if "/versions/" in url:
+                return json.dumps({"data": entries if url.endswith("/1") else []})
+            return version_page
+
+        scraper.net = type("N", (), {"get": staticmethod(_get)})()
+        return scraper
+
+    def _download(self, scraper, version):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            return scraper.download("https://app.en.uptodown.com/android", version, Path(tmp) / "x.apk", "arm64-v8a", "")
+
+    def test_a_gated_download_is_a_blocked_source(self) -> None:
+        gated_page = '<a id="detail-download-button" class="button download"></a>'
+        with self.assertRaises(SourceBlockedError) as ctx:
+            self._download(self._scraper(["5.1.1"], gated_page), "5.1.1")
+        self.assertIn("Turnstile", str(ctx.exception))
+
+    def test_a_version_missing_from_the_listing_is_not_a_blocked_source(self) -> None:
+        with self.assertRaises(UptodownError) as ctx:
+            self._download(self._scraper(["4.7.5"], ""), "5.1.1")
+        self.assertNotIsInstance(ctx.exception, SourceBlockedError)
+        self.assertIn("Version not found", str(ctx.exception))
+
+    def test_blocked_is_still_an_uptodown_error(self) -> None:
+        self.assertTrue(issubclass(UptodownBlockedError, UptodownError))
+        self.assertTrue(issubclass(UptodownBlockedError, SourceBlockedError))
+
+    def test_known_versions_never_touches_the_network(self) -> None:
+        scraper = object.__new__(GitHubScraper)
+        scraper._cache = {}
+        self.assertEqual(scraper.known_versions("anything"), [])
 
 
 class GitHubAssetTests(unittest.TestCase):

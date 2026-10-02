@@ -481,14 +481,47 @@ variable `USE_FLARESOLVERR=true` and/or the `APKFORGE_PROXY` secret — see
 A `HTTP 410` in the log means something different: that source page was permanently removed and its `*-dlurl` in
 `config.toml` needs updating.
 
+**Reading the failure lines.** Each one ends with what that source actually lists, e.g.
+`[lists 14 version(s), newest '4.7.5']`:
+
+| The log says | It means | What helps |
+|:-------------|:---------|:-----------|
+| `Download is gated behind a Cloudflare Turnstile challenge` | Uptodown **has** this exact version — the message is only reachable after the version was found in its listing — but refuses the download. The build asks that source once, not once per version | A solver or proxy (`USE_FLARESOLVERR`, `APKFORGE_PROXY`) |
+| `Version not found` | That source does not carry this version | Another source, or `github-dlurl` (below) |
+| `Bot challenge … could not be bypassed` | The source is behind a Cloudflare managed challenge | A solver or proxy |
+
+To enable the solver on GitHub Actions: **Settings → Secrets and variables → Actions → Variables → New repository
+variable**, name `USE_FLARESOLVERR`, value `true`. Whether it clears Uptodown's Turnstile gate in CI is not verified; try
+it and read the log.
+
+If no source is reachable you can pin a stock APK yourself: upload it to a release in this repository and point the app
+at it with `github-dlurl = "https://github.com/<you>/apkforge/releases/tag/<package-name>"` — it is the second source
+tried, ahead of APKMirror and Uptodown.
+
+</details>
+
+<details>
+<summary><b>An app is missing patches, or its release notes list a patch that was not applied.</b></summary>
+
+Patches are written against specific app versions — they match obfuscated classes that change between releases. When
+the newest version the patch bundle supports cannot be downloaded, the builder falls back to an older one and patches
+it with `-f`; a patch can then fail to match (`Failed to match the fingerprint`), is excluded, and the build retries.
+
+If that leaves **nothing** to apply (`Applying 0 patches`), the build now fails with
+`No patches could be applied to '<app>' v<version>` instead of publishing a re-signed stock APK labelled as patched.
+The fix is to obtain the supported version, not to change the patch: see
+[A build fails with "Stock APK not found"](#-troubleshooting).
+
 </details>
 
 <details>
 <summary><b>A patch was skipped, or an app shows fewer patches than expected.</b></summary>
 
 When a patch fails to apply, the builder excludes it and retries — up to 5 attempts per app — and annotates it in the
-release notes and the app table. If every attempt fails, it falls back to an older cached or online version of the app
-before giving up. Patch compatibility is entirely up to the upstream bundles; report broken patches to their authors.
+release notes and the app table. If that leaves no patch to apply, the build fails rather than shipping an unpatched
+APK. When the newest supported version cannot be downloaded, the builder prefers the newest version a source *can*
+serve over a cached APK, and only then falls back to the cache. Patch compatibility is entirely up to the upstream
+bundles; report broken patches to their authors.
 
 </details>
 

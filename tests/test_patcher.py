@@ -7,8 +7,10 @@
 
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from src.core.patcher import PatcherCLI
+from src.core import patcher as patcher_module
+from src.core.patcher import PatcherCLI, applied_patch_count
 
 # What hoo-dles/patches-1.45.0.mpp reports for com.xodo.pdf.reader: a MicroG patch that
 # is NOT enabled by default.
@@ -102,6 +104,28 @@ class MicroGOptInTests(unittest.TestCase):
     def test_striplibs_is_always_last(self) -> None:
         args = self._args(_LIST_DEFAULT_GMSCORE, microg=False)
         self.assertEqual(args[-2:], ["--striplibs", "arm64-v8a"])
+
+
+class AppliedPatchCountTests(unittest.TestCase):
+    def test_reads_the_cli_line(self) -> None:
+        self.assertEqual(applied_patch_count("INFO: Applying 1 patches... \nINFO: Executing patches"), 1)
+        self.assertEqual(applied_patch_count("INFO: Applying 74 patches..."), 74)
+
+    def test_zero_is_distinct_from_unknown(self) -> None:
+        # Regression: after the only patch was excluded the CLI printed "Applying 0
+        # patches", exited 0, and the builder shipped the stock APK as a patched build.
+        self.assertEqual(applied_patch_count("INFO: Applying 0 patches... "), 0)
+        self.assertIsNone(applied_patch_count("INFO: something else entirely"))
+        self.assertIsNone(applied_patch_count(""))
+
+    def test_the_last_line_wins(self) -> None:
+        self.assertEqual(applied_patch_count("Applying 5 patches\nApplying 0 patches"), 0)
+
+    def test_patch_returns_the_cli_output(self) -> None:
+        cli = _cli()
+        with mock.patch.object(patcher_module, "_run_java_streaming", return_value="INFO: Applying 2 patches..."):
+            out = cli.patch(Path("in.apk"), Path("out.apk"), [])
+        self.assertEqual(applied_patch_count(out), 2)
 
 
 if __name__ == "__main__":

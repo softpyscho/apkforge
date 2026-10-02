@@ -351,6 +351,154 @@ class CachedDownloadValidationTests(unittest.TestCase):
             self.assertGreater(result.path.stat().st_size, 100_000)
 
 
+class ZeroPatchGuardTests(unittest.TestCase):
+    """Replays the Greenify job: patch fails on an unsupported APK, is excluded, and the
+    CLI then "applies 0 patches" and exits 0.
+    """
+
+    class _Entry:
+        table = "Greenify"
+        app_name = "Greenify"
+        brand = "morphe"
+        exclusive_patches = False
+        microg = False
+        patcher_args: list[str] = []  # noqa: RUF012
+        patches = {"github:r/p": {"version": "latest", "include": [], "exclude": []}}  # noqa: RUF012
+
+    class _Patcher:
+        def __init__(self, outputs: list[str | Exception]) -> None:
+            self.outputs, self.calls = list(outputs), 0
+
+        def resolve_auto_patches(self, _):
+            return ("", "")
+
+        def build_patch_args(self, **kwargs):
+            return list(kwargs["extra_args"])
+
+        def patch(self, stock, out, args):
+            self.calls += 1
+            result = self.outputs.pop(0)
+            if isinstance(result, Exception):
+                raise result
+            out.write_bytes(b"PK\x03\x04" + b"0" * 1000)
+            return result
+
+    def _run(self, outputs):
+        patcher = self._Patcher(outputs)
+        dl = builder.DownloadResult(path=Path("stock.apk"), is_bundle=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "build").mkdir()
+            with (
+                mock.patch.object(builder, "TEMP_DIR", tmp_path),
+                mock.patch.object(builder, "BUILD_DIR", tmp_path / "build"),
+            ):
+                result = builder._patch_with_retries(self._Entry(), "arm64-v8a", "4.7.5", True, patcher, "", dl)  # type: ignore[arg-type]
+        return result, patcher
+
+    def test_every_patch_excluded_is_a_failure_not_a_patched_build(self) -> None:
+        failure = builder.PatcherError("SEVERE: FAILED: Unlock Donation\nPatchException: Failed to match the fingerprint")
+        (apk, excluded, exc), patcher = self._run([failure, "INFO: Applying 0 patches... \nINFO: Saved to out.apk"])
+        self.assertIsNone(apk, "a build with zero patches must not be reported as built")
+        self.assertEqual(excluded, ["Unlock Donation"])
+        self.assertIn("No patches could be applied", str(exc))
+        self.assertIn("Unlock Donation", str(exc))
+        self.assertEqual(patcher.calls, 2)
+
+    def test_a_normal_build_is_unaffected(self) -> None:
+        (apk, excluded, exc), _ = self._run(["INFO: Applying 3 patches... "])
+        self.assertIsNotNone(apk)
+        self.assertEqual(excluded, [])
+        self.assertIsNone(exc)
+
+    def test_one_excluded_patch_with_others_remaining_still_ships(self) -> None:
+        failure = builder.PatcherError("SEVERE: FAILED: Bad Patch")
+        (apk, excluded, _), _ = self._run([failure, "INFO: Applying 4 patches... "])
+        self.assertIsNotNone(apk)
+        self.assertEqual(excluded, ["Bad Patch"])
+
+    def test_an_unrecognised_cli_output_is_not_mistaken_for_zero(self) -> None:
+        (apk, _, exc), _ = self._run(["no recognisable line here"])
+        self.assertIsNotNone(apk)
+        self.assertIsNone(exc)
+
+
+class BlockedSourceTests(unittest.TestCase):
+    """Uptodown has the version but gates the download; retrying other versions is futile."""
+
+    class _Entry:
+        table = "Bitget"
+        dpi = ""
+        version = "latest"
+
+        def __init__(self) -> None:
+            self.dl_urls = {"apkmirror": "a", "uptodown": "u"}
+
+    class _Gated:
+        def __init__(self, versions) -> None:
+            self.versions, self.asked = versions, []
+
+        def cached_metadata(self, url):
+            return AppMetadata(pkg_name="pkg", versions=list(self.versions))
+
+        def known_versions(self, url):
+            return list(self.versions)
+
+        def download(self, url, version, dest, arch, dpi):
+            self.asked.append(version)
+            raise builder.SourceBlockedError("Download is gated behind a Cloudflare Turnstile challenge")
+
+    def test_a_blocked_source_is_asked_once_not_once_per_candidate(self) -> None:
+        # Regression: the Bitget job made four futile attempts, one per lower version.
+        gated = self._Gated(["2.92.1", "2.92.3", "2.93.2", "2.94.0", "2.94.2"])
+        entry = self._Entry()
+        entry.dl_urls = {"uptodown": "u"}
+        failed: set[str] = set()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            with self.assertRaises(builder.BuilderError):
+                builder._download_apk(entry, "2.94.2", "arm64-v8a", "pkg", {"uptodown": gated}, "uptodown", failed)  # type: ignore[arg-type]
+            result, version = builder._online_fallback(entry, "2.94.2", "arm64-v8a", "pkg", {"uptodown": gated}, failed)  # type: ignore[arg-type]
+        self.assertIsNone(result)
+        self.assertEqual(version, "")
+        self.assertEqual(gated.asked, ["2.94.2"], "the gated source must be asked exactly once")
+        self.assertIn("uptodown", failed)
+
+    def test_a_plain_miss_does_not_block_the_source(self) -> None:
+        class _Missing(self._Gated):
+            def download(self, url, version, dest, arch, dpi):
+                self.asked.append(version)
+                raise builder.ScraperError("Version not found")
+
+        src = _Missing(["1.0.0"])
+        entry = self._Entry()
+        entry.dl_urls = {"apkmirror": "a"}
+        failed: set[str] = set()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)), self.assertRaises(builder.BuilderError):
+            builder._download_apk(entry, "2.0.0", "arm64-v8a", "pkg", {"apkmirror": src}, "apkmirror", failed)  # type: ignore[arg-type]
+        self.assertNotIn("apkmirror", failed, "a missing version says nothing about the other versions")
+
+    def test_fallback_never_retries_the_target_version(self) -> None:
+        class _Missing(self._Gated):
+            def download(self, url, version, dest, arch, dpi):
+                self.asked.append(version)
+                raise builder.ScraperError("Version not found")
+
+        src = _Missing(["2.93.0", "2.94.2"])
+        entry = self._Entry()
+        entry.dl_urls = {"apkmirror": "a"}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(builder, "ORIGINAL_APK_DIR", Path(tmp)):
+            builder._online_fallback(entry, "2.94.2", "arm64-v8a", "pkg", {"apkmirror": src}, set())  # type: ignore[arg-type]
+        self.assertEqual(src.asked, ["2.93.0"], "the target was already tried; only the lower candidate remains")
+
+    def test_hint_reports_what_the_source_lists(self) -> None:
+        hint = builder._offers_hint(self._Gated(["5.1.1", "4.7.5"]), "u")  # type: ignore[arg-type]
+        self.assertIn("2 version(s)", hint)
+        self.assertIn("'5.1.1'", hint)
+
+    def test_hint_never_raises(self) -> None:
+        self.assertEqual(builder._offers_hint(object(), "u"), "")  # type: ignore[arg-type]
+
+
 class OnlineFallbackTests(unittest.TestCase):
     """Regression: a stale cache was preferred over a version a source actually has.
 

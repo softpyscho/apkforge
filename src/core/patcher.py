@@ -89,6 +89,20 @@ def _parse_versions_output(output: str) -> list[str]:
             versions.append(clean_ver)
     return versions
 
+_APPLIED_PATCHES = re.compile(r"Applying (\d+) patch", re.IGNORECASE)
+
+
+def applied_patch_count(cli_output: str) -> int | None:
+    """Patches the Morphe CLI actually applied, from its "Applying N patches..." line.
+
+    ``None`` when the line is absent (a different CLI version), so a caller never treats
+    an unrecognised output as "zero patches".
+    """
+    if not (matches := _APPLIED_PATCHES.findall(cli_output)):
+        return None
+    return int(matches[-1])
+
+
 def _redact_args(args: list[str | Path]) -> list[str]:
     return [_SECRET_PATTERNS.sub(r"\1***", str(a)) for a in args]
 
@@ -187,7 +201,7 @@ class PatcherCLI:
         p_args.extend(("--striplibs", "arm64-v8a,armeabi-v7a" if arch == "all" else arch))
         return p_args
 
-    def patch(self, stock_apk: Path, output_apk: Path, patch_args: list[str]) -> None:
+    def patch(self, stock_apk: Path, output_apk: Path, patch_args: list[str]) -> str:
         base_cmd = ["-jar", self.cli_jar, "patch", stock_apk, "-o", output_apk]
         ks_args: list[str] = []
         if self.ks_path and (ks_pass := os.getenv("KEYSTORE_PASS")) and (ks_alias := os.getenv("KEYSTORE_ALIAS")):
@@ -197,7 +211,7 @@ class PatcherCLI:
 
         pr(" ".join(_redact_args(["java", *base_cmd, *ks_args, *patch_args])))
         try:
-            _run_java_streaming(["java", *base_cmd, *ks_args, *patch_args])
+            return _run_java_streaming(["java", *base_cmd, *ks_args, *patch_args])
         except PatcherError:
             output_apk.unlink(missing_ok=True)
             raise

@@ -26,6 +26,14 @@ def _parse_html(html: str) -> BeautifulSoup:
 class ScraperError(Exception):
     """Raised for scraper-layer failures: DOM parsing, regex mismatches, missing assets"""
 
+class SourceBlockedError(ScraperError):
+    """The source has the file but refuses to serve downloads in this environment.
+
+    Distinct from "version not found": every other version from the same source will be
+    refused the same way, so retrying them only burns time.
+    """
+
+
 @dataclass(slots=True, frozen=True)
 class AppMetadata:
     pkg_name: str
@@ -47,6 +55,11 @@ class BaseScraper(ABC):
         if url not in self._cache:
             self._cache[url] = self.fetch_metadata(url)
         return self._cache[url]
+
+    def known_versions(self, url: str) -> list[str]:
+        """Versions already fetched for url; never touches the network."""
+        meta = self._cache.get(url)
+        return list(meta.versions) if meta else []
 
     @abstractmethod
     def fetch_metadata(self, url: str) -> AppMetadata:

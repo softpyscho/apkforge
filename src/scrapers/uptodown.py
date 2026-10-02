@@ -16,13 +16,17 @@ import re
 from pathlib import Path
 
 from src.core.network import NetworkManager
-from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError, _parse_html
+from src.scrapers.base import AppMetadata, BaseScraper, DownloadResult, ScraperError, SourceBlockedError, _parse_html
 
 _DEFAULT_ARCH: frozenset[str] = frozenset({"arm64-v8a, armeabi-v7a, x86_64", "arm64-v8a, armeabi-v7a, x86, x86_64", "arm64-v8a, armeabi-v7a"})
 
 
 class UptodownError(ScraperError):
     pass
+
+
+class UptodownBlockedError(UptodownError, SourceBlockedError):
+    """The version exists (it was found in the listing) but the download is gated."""
 
 class UptodownScraper(BaseScraper):
     def __init__(self, net: NetworkManager) -> None:
@@ -80,7 +84,7 @@ class UptodownScraper(BaseScraper):
                 raise UptodownError("Download button not found on page")
             dl_url = dl_btn.get("data-url") or dl_btn.get("data-link") or dl_btn.get("href")
             if not dl_url:
-                raise UptodownError("Download is gated behind a Cloudflare Turnstile challenge; configure FLARESOLVERR_URL or use another source")
+                raise UptodownBlockedError("Download is gated behind a Cloudflare Turnstile challenge; configure FLARESOLVERR_URL or use another source")
 
             out_path = dest.with_suffix(".apkm") if is_bundle else dest
             self.net.download(f"https://dw.uptodown.com/dwn/{dl_url.lstrip('/')}", out_path)

@@ -192,6 +192,29 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   resolves to `6.38.9`. A release whose title has no version is skipped instead of being mis-keyed
   (`src/scrapers/apkmirror.py`).
 
+- **A build that applied zero patches is no longer published as a patched build.** Found in the
+  Greenify job log: the patch failed against the cached 4.7.5 (`Failed to match the fingerprint:
+  Fingerprint(definingClass=LW1;…)` — it targets an obfuscated class that only exists in the 5.x
+  release the bundle supports), was excluded, and the CLI then logged `Applying 0 patches`, exited 0
+  and saved a re-signed **stock** APK. The builder shipped it as `greenify-morphe-v4.7.5-…apk` and the
+  release notes listed a patch as applied. `PatcherCLI.patch()` now returns the CLI output,
+  `applied_patch_count()` reads the `Applying N patches` line, and `_apply_patch()` raises when it is
+  `0` (an output without that line is treated as *unknown*, never as zero). The build fails with
+  `No patches could be applied to 'Greenify' v4.7.5 (excluded after failing: Unlock Donation); the
+  patch bundle most likely does not support this version` (`src/core/patcher.py`,
+  `src/core/builder.py`).
+- **A source that gates its downloads is asked once, not once per candidate version.** Uptodown's
+  Turnstile gate is only reachable after the version was found in its listing, so it proves the source
+  *has* the version and refuses every one the same way — yet the Bitget job made four futile attempts,
+  one per lower version. A new `SourceBlockedError` (raised by Uptodown for the gate, distinct from a
+  plain "Version not found") puts the source in `failed_sources`, and `_online_fallback()` no longer
+  retries the target version or a candidate it already tried (`src/scrapers/base.py`,
+  `src/scrapers/uptodown.py`, `src/core/builder.py`).
+- **Download failures say what the source actually lists.** Each failure line now ends with
+  `[lists N version(s), newest 'X']`, read from the metadata cache with no network access, so
+  "source does not have it" and "source has it but blocks it" are told apart from the log alone. The
+  hint cannot raise: it runs inside an `except` handler and must not replace the real error.
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -202,7 +225,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
   covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
-  Suite: 57 -> 130 tests.
+  Suite: 57 -> 147 tests.
 
 ### Docs
 
@@ -214,6 +237,15 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   `*-dlurl` keys appear in the table — the order is fixed in `src/core/config.py`.
 
 ### Known limitations
+
+- **Greenify, Amazon Prime Video, Alarmy and Bitget cannot reach their newest version from CI.**
+  For all four, Uptodown fails with the *Turnstile* message — which proves it lists the exact
+  version the patches support (`5.1.1`, `3.0.470.1047`, `26.32.1`, `2.94.2`) — while APKMirror either
+  does not carry it (`Version not found`) or is behind a Cloudflare challenge. No code change can
+  fetch a file that a source refuses to serve; the options are a solver or proxy
+  (`USE_FLARESOLVERR`, `APKFORGE_PROXY`; whether the solver clears Uptodown's gate is unverified) or
+  self-hosting the APK via `github-dlurl`. Until then Greenify now fails loudly instead of shipping a
+  stock APK, and the others fall back to the newest version a source can serve.
 
 - **A wildcard pin is a preference, not a guarantee.** When no source can supply a matching build the
   newest available one is published instead, relabelled from its manifest. That keeps a mirror alive,
