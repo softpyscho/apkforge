@@ -163,8 +163,9 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### CI
 
-- **`actions/cache` bumped to v5.1.0** (`caa2961`). v4.3.0 targets Node 20, which GitHub now
-  force-runs on Node 24 and warns about on every job.
+- **Node 20 deprecation warning gone.** `actions/cache` v4.3.0 targets Node 20, which GitHub now
+  force-runs on Node 24 and warns about on every job; it is pinned to v6.1.0 (`55cc834`, verified to
+  declare `runs.using: node24`).
 - **"Cache save failed" is gone.** A cache key is immutable, so when the stock APK had not changed
   `hashFiles()` produced a key that already existed and the save step failed on most jobs. The save
   is now skipped when the restored cache already carries that exact key, via the restore step's
