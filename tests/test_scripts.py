@@ -60,6 +60,50 @@ class WaVersionTests(unittest.TestCase):
                 os.chdir(cwd)
             self.assertEqual(cfg.read_text(encoding="utf-8"), content)
 
+    def test_disabled_table_is_left_untouched(self) -> None:
+        # A disabled entry is not built, so rewriting its pin would only produce config
+        # churn that CI commits.
+        content = '[WhatsApp]\nenabled = false\nversion = "2.26.37.xx"\nmirror = true\n'
+        cwd = Path.cwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.toml"
+            cfg.write_text(content, encoding="utf-8")
+            os.chdir(tmp)
+            try:
+                with (
+                    mock.patch.object(wa_version, "CONFIG_PATH", cfg),
+                    mock.patch.object(wa_version, "fetch_recommended_wa_versions", return_value=("2.26.40.xx", "2.26.40.xx")),
+                    mock.patch("sys.stdout", io.StringIO()),
+                ):
+                    wa_version.update_config_toml()
+            finally:
+                os.chdir(cwd)
+            self.assertEqual(cfg.read_text(encoding="utf-8"), content)
+
+    def test_enabled_table_is_still_updated(self) -> None:
+        content = '[WhatsApp]\nversion = "2.26.37.xx"\nmirror = true\n'
+        cwd = Path.cwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.toml"
+            cfg.write_text(content, encoding="utf-8")
+            os.chdir(tmp)
+            try:
+                with (
+                    mock.patch.object(wa_version, "CONFIG_PATH", cfg),
+                    mock.patch.object(wa_version, "fetch_recommended_wa_versions", return_value=("2.26.40.xx", "")),
+                    mock.patch("sys.stdout", io.StringIO()),
+                ):
+                    wa_version.update_config_toml()
+            finally:
+                os.chdir(cwd)
+            self.assertIn('version = "2.26.40.xx"', cfg.read_text(encoding="utf-8"))
+
+    def test_is_table_disabled(self) -> None:
+        self.assertTrue(wa_version._is_table_disabled('[A]\nenabled = false\n', "A"))
+        self.assertFalse(wa_version._is_table_disabled('[A]\nenabled = true\n', "A"))
+        self.assertFalse(wa_version._is_table_disabled('[A]\nversion = "1"\n', "A"))
+        self.assertFalse(wa_version._is_table_disabled('[B]\nenabled = false\n\n[A]\nversion = "1"\n', "A"))
+
     def test_patch_missing_table_returns_original(self) -> None:
         content = '[Other]\nversion = "1.0"\n'
         new, updated = _patch_version_line(content, "WhatsApp", "1.0")

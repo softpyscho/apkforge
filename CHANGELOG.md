@@ -127,6 +127,17 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   it now warns and continues, and `FLARESOLVERR_URL` is exported only once the solver answers
   (`.github/workflows/build.yml`).
 
+- **WhatsApp and WhatsApp Business are disabled** (`enabled = false` in `config.toml`). Both are
+  pinned to the newest WaEnhancer-supported version, but the only source reachable from
+  GitHub-hosted runners is `whatsapp.com`, which serves the newest build only — so run 55 published
+  `whatsapp-mirror-v2.26.38.74` while WaEnhancer supported `2.26.34.xx`–`2.26.37.xx`, i.e. an APK
+  WaEnhancer cannot hook. Business had no reachable source at all (Cloudflare on APKMirror,
+  HTTP 410 on Uptodown). The README FAQ now documents tracking a WaEnhancer-supported version
+  directly in Obtainium via the APKMirror source's `filterReleaseTitlesByRegEx` +
+  `fallbackToOlderReleases`, which needs no build at all.
+- **The WaEnhancer version sync skips disabled entries**, so CI no longer commits `config.toml`
+  churn for apps that are not built (`src/scripts/wa_version.py`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -136,7 +147,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   scraper parsing layer (APKMirror variant selection, unspecific-version handling, GitHub
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision.
-  Suite: 57 -> 101 tests.
+  Suite: 57 -> 104 tests.
 
 ### Docs
 
@@ -149,16 +160,11 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
-- **WhatsApp Business still needs a reachable source.** Its only configured sources are APKMirror,
-  which serves a Cloudflare managed challenge to GitHub-hosted runners, and
-  `https://whatsapp-business.en.uptodown.com/android`, which returns **HTTP 410 Gone** — the page
-  is permanently removed, so that `uptodown-dlurl` has to be updated or replaced. The two fixes
-  above materially raise the odds on APKMirror (the full impersonation ladder now runs, and the
-  download no longer searches for a literal version), but no code change can conjure a source:
-  set the repository variable `USE_FLARESOLVERR=true` and/or the `APKFORGE_PROXY` secret. The
-  entry has no `direct-dlurl`; adding one would help, but the URL was not verifiable from the
-  build sandbox, so none was guessed. The failure stays loud on purpose — masking it would hide a
-  genuine outage.
+- **A wildcard pin is a preference, not a guarantee.** When no source can supply a matching build the
+  newest available one is published instead, relabelled from its manifest. That keeps a mirror alive,
+  but for a pin that exists to satisfy an external module (WaEnhancer) it ships something unusable —
+  which is why the WhatsApp entries are disabled rather than left green. Enforcing a pin strictly
+  would need a new per-app option and a source carrying older versions.
 - `build.yml` computes a `prerelease` flag from the patch bundles in use and passes it to the release
   step as `PRERELEASE`, but `gh release edit` never consumes it, so every release is published as a
   normal release. This is left as-is deliberately, and the reason is recorded next to the env var in

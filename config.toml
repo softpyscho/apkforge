@@ -205,6 +205,11 @@ pkg-name = "Duck.Detector"
 github-dlurl = "https://github.com/eltavine/Duck-Detector-Refactoring/releases/tag/nightly"
 
 [WhatsApp]
+# Disabled: the only source reachable from GitHub-hosted runners is whatsapp.com, which
+# serves the newest build only, so the WaEnhancer-supported version this entry is pinned
+# to cannot be fetched. APKMirror and Uptodown do carry older versions but are behind
+# Cloudflare here. Re-enable (and configure a solver/proxy) to resume mirroring.
+enabled = false
 app-name = "WhatsApp"
 mirror = true
 version = "2.26.37.xx"
@@ -215,6 +220,10 @@ apkmirror-dlurl = "https://www.apkmirror.com/apk/whatsapp-inc/whatsapp/"
 uptodown-dlurl = "https://whatsapp-messenger.en.uptodown.com/android"
 
 [WhatsApp-Business]
+# Disabled: no reachable source. APKMirror serves a Cloudflare managed challenge to
+# GitHub-hosted runners and the Uptodown page below returns HTTP 410 Gone. Re-enable
+# once a source works (see README -> Getting Past Bot Protection).
+enabled = false
 app-name = "WhatsApp Business"
 mirror = true
 version = "2.26.37.xx"

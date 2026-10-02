@@ -62,6 +62,19 @@ def _is_version(ver: str) -> bool:
     return bool(re.fullmatch(r"\d+(?:\.\d+)*(?:\.xx)?", ver.strip()))
 
 
+def _is_table_disabled(content: str, table: str) -> bool:
+    """True when the [table] block sets `enabled = false`.
+
+    A disabled entry is not built, so rewriting its pinned version would only produce
+    config churn that CI then commits.
+    """
+    block_re = re.compile(rf"^\[{re.escape(table)}\](?:\r?\n(?!\[).*)*", re.MULTILINE)
+    m = block_re.search(content)
+    if not m:
+        return False
+    return re.search(r"(?m)^\s*enabled\s*=\s*false\s*$", m.group(0)) is not None
+
+
 def _patch_version_line(content: str, table: str, new_ver: str) -> tuple[str, bool]:
     """Replace the `version` line inside the [table] block, preserving every other key."""
     block_re = re.compile(rf"^\[{re.escape(table)}\](?:\r?\n(?!\[).*)*", re.MULTILINE)
@@ -91,6 +104,10 @@ def update_config_toml() -> None:
     for table, ver in (("WhatsApp", _to_wildcard(wpp_ver)), ("WhatsApp-Business", _to_wildcard(biz_ver))):
         if not _is_version(ver):
             print(f"[!] No recommended version found for [{table}], keeping the configured one", file=sys.stderr)
+            continue
+
+        if _is_table_disabled(content, table):
+            print(f"[!] [{table}] is disabled, leaving its version untouched", file=sys.stderr)
             continue
 
         new_content, updated = _patch_version_line(new_content, table, ver)
