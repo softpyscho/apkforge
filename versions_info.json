@@ -17,8 +17,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.10.01-88f6f9126d3d",
-      "apk": "Duck.Detector-2026.10.01-88f6f9126d3d.apk",
+      "version": "2026.10.02-3c76a554425a",
+      "apk": "Duck.Detector-2026.10.02-3c76a554425a.apk",
       "source": "github"
     },
     {
@@ -50,13 +50,6 @@
       "source": "apkmirror"
     },
     {
-      "app": "WhatsApp",
-      "label": "WhatsApp (arm64-v8a)",
-      "version": "2.26.39.70",
-      "apk": "whatsapp-mirror-v2.26.39.70-arm64-v8a.apk",
-      "source": "direct"
-    },
-    {
       "app": "Twitter",
       "label": "Twitter (arm64-v8a)",
       "version": "12.19.1-release.0",
@@ -73,8 +66,8 @@
     {
       "app": "Reddit",
       "label": "Reddit (arm64-v8a)",
-      "version": "2026.14.0",
-      "apk": "reddit-morphe-v2026.14.0-arm64-v8a.apk",
+      "version": "2026.24.0",
+      "apk": "reddit-morphe-v2026.24.0-arm64-v8a.apk",
       "source": "apkmirror"
     },
     {
