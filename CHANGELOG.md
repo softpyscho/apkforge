@@ -238,15 +238,15 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
-- **Greenify, Amazon Prime Video, Alarmy and Bitget cannot reach their newest version from CI.**
-  For all four, Uptodown fails with the *Turnstile* message — which proves it lists the exact
-  version the patches support (`5.1.1`, `3.0.470.1047`, `26.32.1`, `2.94.2`) — while APKMirror either
-  does not carry it (`Version not found`) or is behind a Cloudflare challenge. No code change can
-  fetch a file that a source refuses to serve; the options are a solver or proxy
-  (`USE_FLARESOLVERR`, `APKFORGE_PROXY`; whether the solver clears Uptodown's gate is unverified) or
-  self-hosting the APK via `github-dlurl`. Until then Greenify now fails loudly instead of shipping a
-  stock APK, and the others fall back to the newest version a source can serve.
-
+- **Greenify is disabled** (`enabled = false`): its patch bundle supports only 5.x, and no source
+  reachable from CI carries it — APKMirror lists 13 versions with 4.7.5 newest, and Uptodown has 5.1.1
+  but gates the download. With `USE_FLARESOLVERR=true` the solver container started and the gate
+  remained: the solver is only invoked on a Cloudflare challenge *response* (`network.py`), whereas
+  Uptodown serves a normal page with the download link missing. No code change reaches a file a source
+  refuses to serve. To re-enable, self-host the 5.x APK via `github-dlurl` (see README).
+- Amazon Prime Video's `uptodown-dlurl` returned HTTP 410 on every run and was removed; it builds from
+  APKMirror (3 patches applied on 3.0.470). Alarmy and Bitget fall back to the newest version a source
+  can serve.
 - **A wildcard pin is a preference, not a guarantee.** When no source can supply a matching build the
   newest available one is published instead, relabelled from its manifest. That keeps a mirror alive,
   but for a pin that exists to satisfy an external module (WaEnhancer) it ships something unusable —
