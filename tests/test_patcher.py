@@ -106,6 +106,23 @@ class MicroGOptInTests(unittest.TestCase):
         self.assertEqual(args[-2:], ["--striplibs", "arm64-v8a"])
 
 
+class JvmBannerTests(unittest.TestCase):
+    def test_banner_is_not_parsed_as_data(self) -> None:
+        # Regression: "Picked up JAVA_TOOL_OPTIONS: ..." on stderr became the resolved
+        # version ("Choosing version 'Picked up JAVA_TOOL_OPTIONS:'").
+        fake = mock.Mock(returncode=0, stdout="Most common compatible versions:\n5.1.1\n\n", stderr="Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=x\n")
+        with mock.patch.object(patcher_module.subprocess, "run", return_value=fake):
+            out = patcher_module._run_java("-version")
+        self.assertNotIn("Picked up", out)
+        self.assertEqual(patcher_module._parse_versions_output(out), ["5.1.1"])
+
+    def test_other_jvm_banners_are_stripped_too(self) -> None:
+        for var in ("_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"):
+            fake = mock.Mock(returncode=0, stdout="ok\n", stderr=f"Picked up {var}: -Xmx1g\n")
+            with mock.patch.object(patcher_module.subprocess, "run", return_value=fake):
+                self.assertEqual(patcher_module._run_java("x"), "ok\n")
+
+
 class AppliedPatchCountTests(unittest.TestCase):
     def test_reads_the_cli_line(self) -> None:
         self.assertEqual(applied_patch_count("INFO: Applying 1 patches... \nINFO: Executing patches"), 1)

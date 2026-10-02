@@ -181,6 +181,26 @@
             "pendingRepoRenameUrl": null
         },
         {
+            "id": "com.oasisfeng.greenify",
+            "url": "https://github.com/softpyscho/apkforge/releases/latest",
+            "author": "github.com",
+            "name": "Greenify Morphe",
+            "installedVersion": "",
+            "latestVersion": "",
+            "apkUrls": "[]",
+            "otherAssetUrls": "[]",
+            "preferredApkIndex": 0,
+            "additionalSettings": "{\"intermediateLink\":[],\"customLinkFilterRegex\":\"greenify-morphe\",\"filterByLinkText\":false,\"matchLinksOutsideATags\":false,\"skipSort\":false,\"reverseSort\":false,\"sortByLastLinkSegment\":false,\"versionExtractWholePage\":false,\"requestHeader\":[{\"requestHeader\":\"User-Agent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36\"}],\"defaultPseudoVersioningMethod\":\"partialAPKHash\",\"trackOnly\":false,\"versionExtractionRegEx\":\"greenify-morphe-v([0-9.]+)\",\"matchGroupToUse\":\"1\",\"versionDetection\":true,\"useVersionCodeAsOSVersion\":false,\"apkFilterRegEx\":\"\",\"invertAPKFilter\":false,\"autoApkFilterByArch\":true,\"appName\":\"\",\"appAuthor\":\"\",\"shizukuPretendToBeGooglePlay\":false,\"allowInsecure\":false,\"exemptFromBackgroundUpdates\":false,\"skipUpdateNotifications\":false,\"about\":\"\",\"refreshBeforeDownload\":false}",
+            "lastUpdateCheck": 1786344697135921,
+            "pinned": false,
+            "categories": [],
+            "releaseDate": null,
+            "changeLog": null,
+            "overrideSource": "HTML",
+            "allowIdChange": false,
+            "pendingRepoRenameUrl": null
+        },
+        {
             "id": "com.paget96.batteryguru",
             "url": "https://github.com/softpyscho/apkforge/releases/latest",
             "author": "github.com",

@@ -113,22 +113,16 @@ uptodown-dlurl = "https://ticktick.en.uptodown.com/android"
 "gitlab:Paresh-Maheshwari/paresh-patches" = []
 
 [Greenify]
-# Disabled: the patch bundle only supports Greenify 5.x ("Unlock Donation" fingerprints a
-# class that does not exist in 4.x), but no source reachable from CI carries 5.x. APKMirror
-# lists 13 versions with 4.7.5 the newest; Uptodown has 5.1.1 but gates the download behind
-# an in-page Turnstile that neither the solver nor a proxy clears. To re-enable: upload the
-# 5.x APK to a release tagged "com.oasisfeng.greenify", add a github-dlurl for it, and set
-# enabled = true.
-enabled = false
 pkg-name = "com.oasisfeng.greenify"
 badge-color = "43A047"
 badge-icon = "android"
 version = "auto"
 arch = "arm64-v8a"
 apkmirror-dlurl = "https://www.apkmirror.com/apk/oasisfeng/greenify"
+# Newest versions are only reachable from the self-hosted release below: the bundle needs 5.x,
+# APKMirror stops at 4.7.5 and Uptodown gates the download. Replace the asset when updating.
+github-dlurl = "https://github.com/softpyscho/apkforge/releases/tag/com.oasisfeng.greenify"
 uptodown-dlurl = "https://greenify.en.uptodown.com/android"
-# github-dlurl removed: the release tag "com.oasisfeng.greenify" does not exist in this
-# repository (HTTP 404 on every run). Re-add it once a stock APK is published there.
 
 [Greenify.patches]
 "github:rushiranpise/morphe-patches" = []

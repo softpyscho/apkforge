@@ -28,9 +28,14 @@ _PATCH_TIMEOUT = 900  # 15 minutes
 class PatcherError(Exception):
     pass
 
+# The JVM announces these on stderr whenever the variables are set. Output is parsed, so a
+# banner must not be mistaken for data (it once became a "version" and broke a build).
+_JVM_BANNER = re.compile(r"^Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS):.*\n?", re.MULTILINE)
+
+
 def _run_java(*args: str | Path, capture: bool = True, timeout: int = 600) -> str:
     result = subprocess.run(["java", *(str(a) for a in args)], capture_output=capture, text=True, timeout=timeout)
-    combined = (result.stdout or "") + (result.stderr or "")
+    combined = _JVM_BANNER.sub("", (result.stdout or "") + (result.stderr or ""))
     if result.returncode != 0:
         redacted = _SECRET_PATTERNS.sub(r"\1***", combined)
         raise PatcherError(redacted.strip())

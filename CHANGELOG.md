@@ -215,6 +215,10 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   "source does not have it" and "source has it but blocks it" are told apart from the log alone. The
   hint cannot raise: it runs inside an `except` handler and must not replace the real error.
 
+- **JVM banners are no longer parsed as data.** `Picked up JAVA_TOOL_OPTIONS: …` on stderr was merged
+  into the parsed CLI output and became the resolved version, breaking a build. Anyone with
+  `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` or `JDK_JAVA_OPTIONS` set could hit it (`src/core/patcher.py`).
+
 ### Tests
 
 - Added regression tests for all of the above: `_find_pkg_name()` source precedence,
@@ -225,7 +229,7 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
   asset/version derivation, Direct link discovery), plus replays of both WhatsApp job failures,
   the mitigation-budget exhaustion and the patch-bundle collision. Added `tests/test_patcher.py`
   covering auto-patch detection and the MicroG opt-in, including the exact Xodo/Prime Video case.
-  Suite: 57 -> 147 tests.
+  Suite: 57 -> 149 tests.
 
 ### Docs
 
@@ -238,12 +242,12 @@ All notable changes to apkforge. Dates are in `YYYY-MM-DD`.
 
 ### Known limitations
 
-- **Greenify is disabled** (`enabled = false`): its patch bundle supports only 5.x, and no source
-  reachable from CI carries it — APKMirror lists 13 versions with 4.7.5 newest, and Uptodown has 5.1.1
-  but gates the download. With `USE_FLARESOLVERR=true` the solver container started and the gate
-  remained: the solver is only invoked on a Cloudflare challenge *response* (`network.py`), whereas
-  Uptodown serves a normal page with the download link missing. No code change reaches a file a source
-  refuses to serve. To re-enable, self-host the 5.x APK via `github-dlurl` (see README).
+- **Greenify is back, built from a self-hosted APK.** The bundle needs 5.x and no CI-reachable
+  source carries it (APKMirror stops at 4.7.5; Uptodown has 5.1.1 but gates the download — the solver
+  does not help, because it is only invoked on a Cloudflare challenge *response*). The 5.1.1 APK is
+  published at `releases/tag/com.oasisfeng.greenify` and referenced by `github-dlurl`; its manifest
+  confirms 5.1.1. Built end to end: `Applied: Unlock Donation`, signed output. When updating Greenify,
+  replace that release asset.
 - Amazon Prime Video's `uptodown-dlurl` returned HTTP 410 on every run and was removed; it builds from
   APKMirror (3 patches applied on 3.0.470). Alarmy and Bitget fall back to the newest version a source
   can serve.
