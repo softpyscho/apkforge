@@ -17,8 +17,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.10.06-88cc5500d021",
-      "apk": "Duck.Detector-2026.10.06-88cc5500d021.apk",
+      "version": "2026.10.06-82566ffa96bb",
+      "apk": "Duck.Detector-2026.10.06-82566ffa96bb.apk",
       "source": "github"
     },
     {
@@ -108,8 +108,8 @@
     {
       "app": "Bitget",
       "label": "Bitget (arm64-v8a)",
-      "version": "2.94.3",
-      "apk": "bitget-mirror-v2.94.3-arm64-v8a.apkm",
+      "version": "2.94.4",
+      "apk": "bitget-mirror-v2.94.4-arm64-v8a.apkm",
       "source": "apkmirror"
     },
     {
