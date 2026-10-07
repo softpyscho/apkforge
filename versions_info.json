@@ -17,8 +17,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.10.06-82566ffa96bb",
-      "apk": "Duck.Detector-2026.10.06-82566ffa96bb.apk",
+      "version": "2026.10.07-598b76283fa5",
+      "apk": "Duck.Detector-2026.10.07-598b76283fa5.apk",
       "source": "github"
     },
     {
@@ -31,8 +31,8 @@
     {
       "app": "RedotPay",
       "label": "RedotPay (arm64-v8a)",
-      "version": "3.14.0",
-      "apk": "redotpay-mirror-v3.14.0-arm64-v8a.apk",
+      "version": "3.14.4",
+      "apk": "redotpay-mirror-v3.14.4-arm64-v8a.apk",
       "source": "direct"
     },
     {
@@ -127,5 +127,16 @@
       "source": "apkmirror"
     }
   ],
-  "excluded_patches": {}
+  "excluded_patches": {
+    "Instagram": [
+      "Disable comments",
+      "Hide save buttons",
+      "Make ephemeral media permanent"
+    ],
+    "Instagram (arm64-v8a)": [
+      "Disable comments",
+      "Hide save buttons",
+      "Make ephemeral media permanent"
+    ]
+  }
 }
