@@ -17,8 +17,8 @@
     {
       "app": "Duck-Detector",
       "label": "Duck Detector",
-      "version": "2026.10.08-b202e68f3cf9",
-      "apk": "Duck.Detector-2026.10.08-b202e68f3cf9.apk",
+      "version": "2026.10.09-b6c7c42a9457",
+      "apk": "Duck.Detector-2026.10.09-b6c7c42a9457.apk",
       "source": "github"
     },
     {
@@ -92,13 +92,6 @@
       "source": "apkmirror"
     },
     {
-      "app": "Instagram",
-      "label": "Instagram (arm64-v8a)",
-      "version": "439.0.0.37.89",
-      "apk": "instagram-morphe-v439.0.0.37.89-arm64-v8a.apk",
-      "source": "github"
-    },
-    {
       "app": "Mixplorer",
       "label": "Mixplorer (arm64-v8a)",
       "version": "6.71.15-API29",
@@ -127,16 +120,5 @@
       "source": "apkmirror"
     }
   ],
-  "excluded_patches": {
-    "Instagram": [
-      "Disable comments",
-      "Hide save buttons",
-      "Make ephemeral media permanent"
-    ],
-    "Instagram (arm64-v8a)": [
-      "Disable comments",
-      "Hide save buttons",
-      "Make ephemeral media permanent"
-    ]
-  }
+  "excluded_patches": {}
 }
