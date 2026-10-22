@@ -22,13 +22,6 @@
       "source": "github"
     },
     {
-      "app": "Twitter",
-      "label": "Twitter (arm64-v8a)",
-      "version": "12.19.1-release.0",
-      "apk": "twitter-morphe-v12.19.1-release.0-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
       "app": "RedotPay",
       "label": "RedotPay (arm64-v8a)",
       "version": "3.14.4",
@@ -110,13 +103,6 @@
       "label": "Amazon Prime Video (arm64-v8a)",
       "version": "3.0.470",
       "apk": "amazon-prime-video-morphe-v3.0.470-arm64-v8a.apk",
-      "source": "apkmirror"
-    },
-    {
-      "app": "Reddit",
-      "label": "Reddit (arm64-v8a)",
-      "version": "2026.24.0",
-      "apk": "reddit-morphe-v2026.24.0-arm64-v8a.apk",
       "source": "apkmirror"
     }
   ],
